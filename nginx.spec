@@ -21,7 +21,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.12.1
-Release:           6%{?dist}
+Release:           7%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -400,9 +400,9 @@ fi
 %config(noreplace) %{_sysconfdir}/nginx/uwsgi_params.default
 %config(noreplace) %{_sysconfdir}/nginx/win-utf
 %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
-%attr(700,%{nginx_user},%{nginx_user}) %dir %{_localstatedir}/lib/nginx
-%attr(700,%{nginx_user},%{nginx_user}) %dir %{_localstatedir}/lib/nginx/tmp
-%attr(700,%{nginx_user},%{nginx_user}) %dir %{_localstatedir}/log/nginx
+%attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
+%attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
+%attr(770,%{nginx_user},root) %dir %{_localstatedir}/log/nginx
 %dir %{_libdir}/nginx/modules
 
 %files all-modules
@@ -445,6 +445,9 @@ fi
 
 
 %changelog
+* Wed May 02 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-7
+- Resolves: #1573942 - nginx fails on start
+
 * Thu Feb 08 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.12.1-6
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
 
