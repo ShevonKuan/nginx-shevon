@@ -21,7 +21,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.12.1
-Release:           7%{?dist}
+Release:           8%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -52,6 +52,10 @@ Patch0:            nginx-auto-cc-gcc.patch
 # That has been fixed some time in glibc-2.3.X and is
 # not needed with libxcrypt anyways.
 Patch1:            0001-unix-ngx_user-Apply-fix-for-really-old-bug-in-glibc-.patch
+
+# downstream patch - changing logs permissions to 664 instead
+# previous 644
+Patch2:            nginx-1.12.1-logs-perm.patch
 
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
@@ -183,6 +187,7 @@ Requires:          nginx
 %setup -q
 %patch0 -p0
 %patch1 -p1
+%patch2 -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
 %if 0%{?rhel} > 0 && 0%{?rhel} < 8
@@ -445,6 +450,12 @@ fi
 
 
 %changelog
+* Wed May 02 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-7
+- Resolves: #1573942 - nginx fails on start
+
+* Mon May 14 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-8
+- Related: #1573942 - nginx fails on start
+
 * Wed May 02 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-7
 - Resolves: #1573942 - nginx fails on start
 
