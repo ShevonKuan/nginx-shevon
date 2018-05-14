@@ -449,9 +449,6 @@ fi
 
 
 %changelog
-* Wed May 02 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-7
-- Resolves: #1573942 - nginx fails on start
-
 * Mon May 14 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-8
 - Related: #1573942 - nginx fails on start
 
