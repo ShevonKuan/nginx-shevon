@@ -22,8 +22,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.14.1
-Release:           2%{?dist}
+Version:           1.14.2
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -49,11 +49,6 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 # removes -Werror in upstream build scripts.  -Werror conflicts with
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
 Patch0:            nginx-auto-cc-gcc.patch
-
-# Apply fix for bug in glibc libcrypt, if needed only.
-# That has been fixed some time in glibc-2.3.X and is
-# not needed with libxcrypt anyways.
-Patch1:            0001-unix-ngx_user-Apply-fix-for-really-old-bug-in-glibc-.patch
 
 # downstream patch - changing logs permissions to 664 instead
 # previous 644
@@ -194,7 +189,6 @@ Requires:          nginx
 %prep
 %setup -q
 %patch0 -p0
-%patch1 -p1
 %patch2 -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
@@ -235,6 +229,7 @@ if ! ./configure \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-http_realip_module \
+    --with-stream_ssl_preread_module \
     --with-http_addition_module \
     --with-http_xslt_module=dynamic \
     --with-http_image_filter_module=dynamic \
@@ -472,7 +467,11 @@ fi
 
 
 %changelog
-* Tue Nov 20 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.14.12
+* Mon Mar 04 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.14.2-1
+- update to upstream release 1.14.2
+- enable ngx_stream_ssl_preread module
+
+* Tue Nov 20 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.14.1-2
 - new version 1.14.1
 - Resolves: #1584426 - Upstream Nginx 1.14.0 is now available
 - Resolves: #1647255 - CVE-2018-16845 nginx: Denial of service and memory
