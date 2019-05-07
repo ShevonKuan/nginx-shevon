@@ -2,7 +2,7 @@
 %global  nginx_user          nginx
 
 Name:              nginx
-Version:           1.10.2
+Version:           1.10.3
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -381,6 +381,10 @@ fi
 
 
 %changelog
+* Tue May 07 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1.10.3-1
+- Update to upstream release 1.10.3
+- Add missing directory for vim plugin
+
 * Mon Oct 31 2016 Jamie Nguyen <jamielinux@fedoraproject.org> - 1.10.2-1
 - update to upstream release 1.10.2
 
