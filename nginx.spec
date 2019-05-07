@@ -23,7 +23,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.14.2
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -315,7 +315,7 @@ install -p -D -m 0644 %{_builddir}/nginx-%{version}/man/nginx.8 \
 install -p -D -m 0755 %{SOURCE13} %{buildroot}%{_bindir}/nginx-upgrade
 install -p -D -m 0644 %{SOURCE14} %{buildroot}%{_mandir}/man8/nginx-upgrade.8
 
-for i in ftdetect indent syntax; do
+for i in ftdetect ftplugin indent syntax; do
     install -p -D -m644 contrib/vim/${i}/nginx.vim \
         %{buildroot}%{_datadir}/vim/vimfiles/${i}/nginx.vim
 done
@@ -396,6 +396,7 @@ fi
 %{_bindir}/nginx-upgrade
 %{_sbindir}/nginx
 %{_datadir}/vim/vimfiles/ftdetect/nginx.vim
+%{_datadir}/vim/vimfiles/ftplugin/nginx.vim
 %{_datadir}/vim/vimfiles/syntax/nginx.vim
 %{_datadir}/vim/vimfiles/indent/nginx.vim
 %{_mandir}/man3/nginx.3pm*
@@ -467,6 +468,9 @@ fi
 
 
 %changelog
+* Tue May 07 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.14.2-2
+- Add missing directory for vim plugin
+
 * Mon Mar 04 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.14.2-1
 - update to upstream release 1.14.2
 - enable ngx_stream_ssl_preread module
