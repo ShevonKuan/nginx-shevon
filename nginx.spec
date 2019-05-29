@@ -22,11 +22,10 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.14.0
-Release:           1%{?dist}
+Version:           1.14.1
+Release:           5%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
-Group:             System Environment/Daemons
 # BSD License (two clause)
 # http://www.freebsd.org/copyright/freebsd-license.html
 License:           BSD
@@ -93,7 +92,6 @@ IMAP protocols, with a strong focus on high concurrency, performance and low
 memory usage.
 
 %package all-modules
-Group:             System Environment/Daemons
 Summary:           A meta package that installs all available Nginx modules
 BuildArch:         noarch
 
@@ -118,7 +116,6 @@ Fedora 24, modules are optional.
 %endif
 
 %package filesystem
-Group:             System Environment/Daemons
 Summary:           The basic directory layout for the Nginx server
 BuildArch:         noarch
 Requires(pre):     shadow-utils
@@ -130,7 +127,6 @@ directories.
 
 %if %{with geoip}
 %package mod-http-geoip
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP geoip module
 BuildRequires:     GeoIP-devel
 Requires:          nginx
@@ -141,7 +137,6 @@ Requires:          GeoIP
 %endif
 
 %package mod-http-image-filter
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP image filter module
 BuildRequires:     gd-devel
 Requires:          nginx
@@ -151,7 +146,6 @@ Requires:          gd
 %{summary}.
 
 %package mod-http-perl
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP perl module
 BuildRequires:     perl-devel
 %if 0%{?fedora} >= 24
@@ -166,7 +160,6 @@ Requires:          perl(constant)
 %{summary}.
 
 %package mod-http-xslt-filter
-Group:             System Environment/Daemons
 Summary:           Nginx XSLT module
 BuildRequires:     libxslt-devel
 Requires:          nginx
@@ -175,7 +168,6 @@ Requires:          nginx
 %{summary}.
 
 %package mod-mail
-Group:             System Environment/Daemons
 Summary:           Nginx mail modules
 Requires:          nginx
 
@@ -183,7 +175,6 @@ Requires:          nginx
 %{summary}.
 
 %package mod-stream
-Group:             System Environment/Daemons
 Summary:           Nginx stream modules
 Requires:          nginx
 
@@ -314,7 +305,7 @@ install -p -m 0644 %{SOURCE103} %{SOURCE104} \
 rm -f %{buildroot}%{_sysconfdir}/nginx/mime.types
 %endif
 
-install -p -D -m 0644 %{_builddir}/nginx-%{version}/man/nginx.8 \
+install -p -D -m 0644 %{_builddir}/nginx-%{version}/objs/nginx.8 \
     %{buildroot}%{_mandir}/man8/nginx.8
 
 install -p -D -m 0755 %{SOURCE13} %{buildroot}%{_bindir}/nginx-upgrade
@@ -472,8 +463,24 @@ fi
 
 
 %changelog
-* Fri Aug 10 2018 Lubos Uhliarik <luhliari@redhat.com> - 1:1.14.0-1
-- new version 1.14.0
+* Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.14.1-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
+* Mon Jan 14 2019 Björn Esser <besser82@fedoraproject.org> - 1:1.14.1-4
+- Rebuilt for libcrypt.so.2 (#1666033)
+
+* Tue Dec 11 2018 Joe Orton <jorton@redhat.com> - 1:1.14.1-3
+- fix unexpanded paths in nginx(8)
+
+* Tue Nov 20 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.14.1-2
+- new version 1.14.1
+- Resolves: #1584426 - Upstream Nginx 1.14.0 is now available
+- Resolves: #1647255 - CVE-2018-16845 nginx: Denial of service and memory
+  disclosure via mp4 module
+- Resolves: #1647259 - CVE-2018-16843 nginx: Excessive memory consumption
+  via flaw in HTTP/2 implementation
+- Resolves: #1647258 - CVE-2018-16844 nginx: Excessive CPU usage via flaw
+  in HTTP/2 implementation
 
 * Mon Aug 06 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.12.1-14
 - add requires on perl(constant) for mod-http-perl
