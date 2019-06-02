@@ -22,8 +22,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.16.0
-Release:           4%{?dist}
+Version:           1.17.0
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -459,6 +459,9 @@ fi
 
 
 %changelog
+* Sun Jun 02 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.0-1
+- update mainline to 1.17.0
+
 * Thu May 30 2019 Jitka Plesnikova <jplesnik@redhat.com> - 1:1.16.0-4
 - Perl 5.30 rebuild
 
