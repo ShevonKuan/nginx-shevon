@@ -22,7 +22,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.17.2
+Version:           1.17.3
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -32,6 +32,13 @@ License:           BSD
 URL:               http://nginx.org/
 
 Source0:           https://nginx.org/download/nginx-%{version}.tar.gz
+Source1:           https://nginx.org/download/nginx-%{version}.tar.gz.asc
+# Keys are found here: http://nginx.org/en/pgp_keys.html
+Source2:           http://nginx.org/keys/aalexeev.key
+Source3:           http://nginx.org/keys/is.key
+Source4:           http://nginx.org/keys/maxim.key
+Source5:           http://nginx.org/keys/mdounin.key
+Source6:           http://nginx.org/keys/sb.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -52,6 +59,7 @@ Patch0:            nginx-auto-cc-gcc.patch
 Patch2:            nginx-1.12.1-logs-perm.patch
 
 BuildRequires:     gcc
+BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
@@ -169,6 +177,9 @@ Requires:          nginx
 
 
 %prep
+# Combine all keys from upstream into one file
+cat %{S:2} %{S:3} %{S:4} %{S:5} %{S:6} > %{_builddir}/%{name}.gpg
+%{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %setup -q
 %patch0 -p0
 %patch2 -p1
@@ -459,6 +470,11 @@ fi
 
 
 %changelog
+* Fri Aug 16 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.3-1
+- update mainline to 1.17.3
+- fixes CVE-2019-9511, CVE-2019-9513, CVE-2019-9516
+- enable source file verification
+
 * Wed Jul 24 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.2-1
 - update mainline to 1.17.2
 
