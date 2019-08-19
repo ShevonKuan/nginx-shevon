@@ -22,11 +22,10 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.14.2
-Release:           2%{?dist}
+Version:           1.16.1
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
-Group:             System Environment/Daemons
 # BSD License (two clause)
 # http://www.freebsd.org/copyright/freebsd-license.html
 License:           BSD
@@ -38,8 +37,6 @@ Source11:          nginx.logrotate
 Source12:          nginx.conf
 Source13:          nginx-upgrade
 Source14:          nginx-upgrade.8
-Source100:         index.html
-Source101:         poweredby.png
 Source102:         nginx-logo.png
 Source103:         404.html
 Source104:         50x.html
@@ -63,8 +60,9 @@ BuildRequires:     pcre-devel
 BuildRequires:     zlib-devel
 
 Requires:          nginx-filesystem = %{epoch}:%{version}-%{release}
+Requires:          system-logos-httpd
 
-%if 0%{?rhel} || 0%{?fedora} < 24
+%if 0%{?rhel} > 0 && 0%{?rhel} < 8
 # Introduced at 1:1.10.0-1 to ease upgrade path. To be removed later.
 Requires:          nginx-all-modules = %{epoch}:%{version}-%{release}
 %endif
@@ -88,7 +86,6 @@ IMAP protocols, with a strong focus on high concurrency, performance and low
 memory usage.
 
 %package all-modules
-Group:             System Environment/Daemons
 Summary:           A meta package that installs all available Nginx modules
 BuildArch:         noarch
 
@@ -102,18 +99,9 @@ Requires:          nginx-mod-mail = %{epoch}:%{version}-%{release}
 Requires:          nginx-mod-stream = %{epoch}:%{version}-%{release}
 
 %description all-modules
-%{summary}.
-%if 0%{?rhel}
-The main nginx package depends on this to ease the upgrade path. After a grace
-period of several months, modules will become optional.
-%endif
-%if 0%{?fedora} && 0%{?fedora} < 24
-The main nginx package depends on this to ease the upgrade path. Starting from
-Fedora 24, modules are optional.
-%endif
+Meta package that installs all available nginx modules.
 
 %package filesystem
-Group:             System Environment/Daemons
 Summary:           The basic directory layout for the Nginx server
 BuildArch:         noarch
 Requires(pre):     shadow-utils
@@ -125,7 +113,6 @@ directories.
 
 %if %{with geoip}
 %package mod-http-geoip
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP geoip module
 BuildRequires:     GeoIP-devel
 Requires:          nginx
@@ -136,7 +123,6 @@ Requires:          GeoIP
 %endif
 
 %package mod-http-image-filter
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP image filter module
 BuildRequires:     gd-devel
 Requires:          nginx
@@ -146,7 +132,6 @@ Requires:          gd
 %{summary}.
 
 %package mod-http-perl
-Group:             System Environment/Daemons
 Summary:           Nginx HTTP perl module
 BuildRequires:     perl-devel
 %if 0%{?fedora} >= 24
@@ -161,7 +146,6 @@ Requires:          perl(constant)
 %{summary}.
 
 %package mod-http-xslt-filter
-Group:             System Environment/Daemons
 Summary:           Nginx XSLT module
 BuildRequires:     libxslt-devel
 Requires:          nginx
@@ -170,7 +154,6 @@ Requires:          nginx
 %{summary}.
 
 %package mod-mail
-Group:             System Environment/Daemons
 Summary:           Nginx mail modules
 Requires:          nginx
 
@@ -178,7 +161,6 @@ Requires:          nginx
 %{summary}.
 
 %package mod-stream
-Group:             System Environment/Daemons
 Summary:           Nginx stream modules
 Requires:          nginx
 
@@ -298,10 +280,19 @@ install -p -d -m 0755 %{buildroot}%{_libdir}/nginx/modules
 
 install -p -m 0644 ./nginx.conf \
     %{buildroot}%{_sysconfdir}/nginx
-install -p -m 0644 %{SOURCE100} \
+
+rm -f %{buildroot}%{_datadir}/nginx/html/index.html
+ln -s ../../fedora-testpage/index.html \
+      %{buildroot}%{_datadir}/nginx/html/index.html
+install -p -m 0644 %{SOURCE102} \
     %{buildroot}%{_datadir}/nginx/html
-install -p -m 0644 %{SOURCE101} %{SOURCE102} \
-    %{buildroot}%{_datadir}/nginx/html
+ln -s nginx-logo.png %{buildroot}%{_datadir}/nginx/html/poweredby.png
+mkdir -p %{buildroot}%{_datadir}/nginx/html/icons
+
+# Symlink for the powered-by-$DISTRO image:
+ln -s ../../../pixmaps/poweredby.png \
+      %{buildroot}%{_datadir}/nginx/html/icons/poweredby.png
+
 install -p -m 0644 %{SOURCE103} %{SOURCE104} \
     %{buildroot}%{_datadir}/nginx/html
 
@@ -309,7 +300,7 @@ install -p -m 0644 %{SOURCE103} %{SOURCE104} \
 rm -f %{buildroot}%{_sysconfdir}/nginx/mime.types
 %endif
 
-install -p -D -m 0644 %{_builddir}/nginx-%{version}/man/nginx.8 \
+install -p -D -m 0644 %{_builddir}/nginx-%{version}/objs/nginx.8 \
     %{buildroot}%{_mandir}/man8/nginx.8
 
 install -p -D -m 0755 %{SOURCE13} %{buildroot}%{_bindir}/nginx-upgrade
@@ -468,12 +459,39 @@ fi
 
 
 %changelog
-* Tue May 07 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.14.2-2
+* Tue Aug 13 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.16.1-1
+- Update to upstream release 1.16.1
+- Fixes CVE-2019-9511, CVE-2019-9513, CVE-2019-9516
+
+* Thu Jul 25 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.16.0-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_31_Mass_Rebuild
+
+* Thu May 30 2019 Jitka Plesnikova <jplesnik@redhat.com> - 1:1.16.0-4
+- Perl 5.30 rebuild
+
+* Tue May 14 2019 Stephen Gallagher <sgallagh@redhat.com> - 1.16.0-3
+- Move to common default index.html
+- Resolves: rhbz#1636235
+
+* Tue May 07 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.16.0-2
 - Add missing directory for vim plugin
 
-* Mon Mar 04 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.14.2-1
-- update to upstream release 1.14.2
-- enable ngx_stream_ssl_preread module
+* Fri Apr 26 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.16.0-1
+- Update to upstream release 1.16.0
+
+* Mon Mar 04 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.15.9-1
+- Update to upstream release 1.15.9
+- Enable ngx_stream_ssl_preread module
+- Remove redundant conditionals
+
+* Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.14.1-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
+* Mon Jan 14 2019 Björn Esser <besser82@fedoraproject.org> - 1:1.14.1-4
+- Rebuilt for libcrypt.so.2 (#1666033)
+
+* Tue Dec 11 2018 Joe Orton <jorton@redhat.com> - 1:1.14.1-3
+- fix unexpanded paths in nginx(8)
 
 * Tue Nov 20 2018 Luboš Uhliarik <luhliari@redhat.com> - 1:1.14.1-2
 - new version 1.14.1
