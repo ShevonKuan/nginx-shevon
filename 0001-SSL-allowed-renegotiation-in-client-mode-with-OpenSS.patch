@@ -1,0 +1,29 @@
+From 99611988792cbc6a3355bb169bbc797bb6d6310f Mon Sep 17 00:00:00 2001
+From: Sergey Kandaurov <pluknet@nginx.com>
+Date: Wed, 3 May 2017 15:15:56 +0300
+Subject: [PATCH] SSL: allowed renegotiation in client mode with OpenSSL <
+ 1.1.0.
+
+In ac9b1df5b246 (1.13.0) we attempted to allow renegotiation in client mode,
+but when using OpenSSL 1.0.2 or older versions it was additionally disabled
+by SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS.
+---
+ src/event/ngx_event_openssl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/event/ngx_event_openssl.c b/src/event/ngx_event_openssl.c
+index fdbd0c95..2c4e1140 100644
+--- a/src/event/ngx_event_openssl.c
++++ b/src/event/ngx_event_openssl.c
+@@ -1300,7 +1300,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
+ #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+ 
+         /* initial handshake done, disable renegotiation (CVE-2009-3555) */
+-        if (c->ssl->connection->s3) {
++        if (c->ssl->connection->s3 && SSL_is_server(c->ssl->connection)) {
+             c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
+         }
+ 
+-- 
+2.23.0
+

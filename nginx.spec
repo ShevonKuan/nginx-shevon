@@ -15,7 +15,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.12.2
-Release:           3%{?dist}
+Release:           4%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 Group:             System Environment/Daemons
@@ -42,6 +42,12 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 # removes -Werror in upstream build scripts.  -Werror conflicts with
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
 Patch0:            nginx-auto-cc-gcc.patch
+
+## https://trac.nginx.org/nginx/ticket/872
+# https://github.com/nginx/nginx/commit/36be79301e513a97ec170950b6c9216100b2c264
+Patch0001:         0001-SSL-disabled-renegotiation-detection-in-client-mode.patch
+# https://github.com/nginx/nginx/commit/99611988792cbc6a3355bb169bbc797bb6d6310f
+Patch0002:         0001-SSL-allowed-renegotiation-in-client-mode-with-OpenSS.patch
 
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
@@ -172,6 +178,8 @@ Requires:          nginx
 %prep
 %setup -q
 %patch0 -p0
+%patch1 -p1
+%patch2 -p1
 
 cp %{SOURCE200} .
 cp %{SOURCE210} .
@@ -432,6 +440,9 @@ fi
 
 
 %changelog
+* Tue Sep 03 2019 Igor Gnatenko <ignatenkobrain@fedoraproject.org> - 1:1.12.2-4
+- Fix issues with renegotiation
+
 * Tue May 07 2019 Jamie Nguyen <jamielinux@fedoraproject.org> - 1:1.12.2-3
 - Add missing directory for vim plugin
 

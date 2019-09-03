@@ -1,0 +1,59 @@
+From 36be79301e513a97ec170950b6c9216100b2c264 Mon Sep 17 00:00:00 2001
+From: Sergey Kandaurov <pluknet@nginx.com>
+Date: Tue, 18 Apr 2017 16:08:44 +0300
+Subject: [PATCH] SSL: disabled renegotiation detection in client mode.
+
+CVE-2009-3555 is no longer relevant and mitigated by the renegotiation
+info extension (secure renegotiation).  On the other hand, unexpected
+renegotiation still introduces potential security risks, and hence we do
+not allow renegotiation on the server side, as we never request renegotiation.
+
+On the client side the situation is different though.  There are backends
+which explicitly request renegotiation, and disabled renegotiation
+introduces interoperability problems.  This change allows renegotiation
+on the client side, and fixes interoperability problems as observed with
+such backends (ticket #872).
+
+Additionally, with TLSv1.3 the SSL_CB_HANDSHAKE_START flag is currently set
+by OpenSSL when receiving a NewSessionTicket message, and was detected by
+nginx as a renegotiation attempt.  This looks like a bug in OpenSSL, though
+this change also allows better interoperability till the problem is fixed.
+---
+ src/event/ngx_event_openssl.c | 4 +++-
+ src/event/ngx_event_openssl.h | 5 +++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/event/ngx_event_openssl.c b/src/event/ngx_event_openssl.c
+index eb418314..148705cc 100644
+--- a/src/event/ngx_event_openssl.c
++++ b/src/event/ngx_event_openssl.c
+@@ -837,7 +837,9 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
+     BIO               *rbio, *wbio;
+     ngx_connection_t  *c;
+ 
+-    if (where & SSL_CB_HANDSHAKE_START) {
++    if ((where & SSL_CB_HANDSHAKE_START)
++        && SSL_is_server((ngx_ssl_conn_t *) ssl_conn))
++    {
+         c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+ 
+         if (c->ssl->handshaked) {
+diff --git a/src/event/ngx_event_openssl.h b/src/event/ngx_event_openssl.h
+index 607ee901..2a149802 100644
+--- a/src/event/ngx_event_openssl.h
++++ b/src/event/ngx_event_openssl.h
+@@ -54,6 +54,11 @@
+ #define ngx_ssl_conn_t          SSL
+ 
+ 
++#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
++#define SSL_is_server(s)        (s)->server
++#endif
++
++
+ struct ngx_ssl_s {
+     SSL_CTX                    *ctx;
+     ngx_log_t                  *log;
+-- 
+2.23.0
+
