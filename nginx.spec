@@ -76,9 +76,6 @@ Requires:          nginx-mimetypes
 Provides:          webserver
 
 BuildRequires:     systemd
-Requires(post):    systemd
-Requires(preun):   systemd
-Requires(postun):  systemd
 
 %description
 Nginx is a web server and a reverse proxy server for HTTP, SMTP, POP3 and
