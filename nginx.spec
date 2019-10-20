@@ -22,8 +22,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.14.1
-Release:           5%{?dist}
+Version:           1.14.2
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -48,11 +48,6 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 # removes -Werror in upstream build scripts.  -Werror conflicts with
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
 Patch0:            nginx-auto-cc-gcc.patch
-
-# Apply fix for bug in glibc libcrypt, if needed only.
-# That has been fixed some time in glibc-2.3.X and is
-# not needed with libxcrypt anyways.
-Patch1:            0001-unix-ngx_user-Apply-fix-for-really-old-bug-in-glibc-.patch
 
 # downstream patch - changing logs permissions to 664 instead
 # previous 644
@@ -185,7 +180,6 @@ Requires:          nginx
 %prep
 %setup -q
 %patch0 -p0
-%patch1 -p1
 %patch2 -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
@@ -463,6 +457,9 @@ fi
 
 
 %changelog
+* Sun Oct 20 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.14.2-1
+- update to 1.14.2
+
 * Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.14.1-5
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
 
