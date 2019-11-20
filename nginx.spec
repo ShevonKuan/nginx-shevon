@@ -22,7 +22,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.17.5
+Version:           1.17.6
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -488,6 +488,10 @@ fi
 
 
 %changelog
+* Wed Nov 20 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.6-1
+- update mainline to 1.17.6
+- increase types_hash_max_size in default config from 2048 to 4096 (RHBZ#1564878)
+
 * Tue Oct 22 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.5-1
 - update mainline to 1.17.5
 - add conditionals for EL7
