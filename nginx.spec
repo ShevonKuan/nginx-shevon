@@ -22,23 +22,23 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.17.6
+Version:           1.17.7
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
 # http://www.freebsd.org/copyright/freebsd-license.html
 License:           BSD
-URL:               http://nginx.org/
+URL:               https://nginx.org
 
 Source0:           https://nginx.org/download/nginx-%{version}.tar.gz
 Source1:           https://nginx.org/download/nginx-%{version}.tar.gz.asc
-# Keys are found here: http://nginx.org/en/pgp_keys.html
-Source2:           http://nginx.org/keys/aalexeev.key
-Source3:           http://nginx.org/keys/is.key
-Source4:           http://nginx.org/keys/maxim.key
-Source5:           http://nginx.org/keys/mdounin.key
-Source6:           http://nginx.org/keys/sb.key
+# Keys are found here: https://nginx.org/en/pgp_keys.html
+Source2:           https://nginx.org/keys/aalexeev.key
+Source3:           https://nginx.org/keys/is.key
+Source4:           https://nginx.org/keys/maxim.key
+Source5:           https://nginx.org/keys/mdounin.key
+Source6:           https://nginx.org/keys/sb.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -488,6 +488,10 @@ fi
 
 
 %changelog
+* Fri Dec 27 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.7-1
+- update mainline to 1.17.7
+- change all source URLs to https
+
 * Wed Nov 20 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.6-1
 - update mainline to 1.17.6
 - increase types_hash_max_size in default config from 2048 to 4096 (RHBZ#1564878)
