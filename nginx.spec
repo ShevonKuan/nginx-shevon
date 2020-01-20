@@ -16,14 +16,14 @@
 
 %global with_aio 1
 
-%if 0%{?fedora} > 22 || 0%{?rhel} >= 8
+%if 0%{?fedora} > 22
 %global with_mailcap_mimetypes 1
 %endif
 
 Name:              nginx
 Epoch:             1
 Version:           1.17.7
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -488,6 +488,9 @@ fi
 
 
 %changelog
+* Mon Jan 20 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.7-2
+- only use mailcap mimetypes on Fedora as they're not in EL
+
 * Fri Dec 27 2019 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.7-1
 - update mainline to 1.17.7
 - change all source URLs to https
