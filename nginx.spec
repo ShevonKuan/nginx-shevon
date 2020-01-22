@@ -22,8 +22,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.17.7
-Release:           2%{?dist}
+Version:           1.17.8
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -488,6 +488,9 @@ fi
 
 
 %changelog
+* Wed Jan 22 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.8-1
+- update mainline to 1.17.8
+
 * Mon Jan 20 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.7-2
 - only use mailcap mimetypes on Fedora as they're not in EL
 
