@@ -22,7 +22,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.17.10
+Version:           1.19.0
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -52,11 +52,11 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 
 # removes -Werror in upstream build scripts.  -Werror conflicts with
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
-Patch0:            nginx-auto-cc-gcc.patch
+Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
 # downstream patch - changing logs permissions to 664 instead
 # previous 644
-Patch2:            nginx-1.12.1-logs-perm.patch
+Patch1:            0002-change-logs-permissions-to-664.patch
 
 BuildRequires:     gcc
 BuildRequires:     gnupg2
@@ -91,6 +91,7 @@ Requires(pre):     nginx-filesystem
 Requires:          nginx-mimetypes
 %endif
 Provides:          webserver
+Recommends:        logrotate
 
 BuildRequires:     systemd
 Requires(post):    systemd
@@ -189,9 +190,7 @@ Requires:          nginx
 # Combine all keys from upstream into one file
 cat %{S:2} %{S:3} %{S:4} %{S:5} %{S:6} > %{_builddir}/%{name}.gpg
 %{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
-%setup -q
-%patch0 -p0
-%patch2 -p1
+%autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
 %if 0%{?rhel} > 0 && 0%{?rhel} < 8
@@ -488,6 +487,18 @@ fi
 
 
 %changelog
+* Sun Jun 07 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.19.0-1
+- update mainline to 1.19.0
+- rework patches to work with %%autosetup
+
+* Fri Apr 24 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.18.0-1
+- Update to 1.18.0
+- Increased types_hash_max_size to 4096 in default config
+- Add gpg source verification
+- Add Recommends: logrotate
+- Drop location / from default config (rhbz#1564768)
+- Drop default_sever from default config (rhbz#1373822)
+
 * Wed Apr 15 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.17.10-1
 - update mainline to 1.17.10
 
