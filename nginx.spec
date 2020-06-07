@@ -23,7 +23,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.16.1
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -45,11 +45,14 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 
 # removes -Werror in upstream build scripts.  -Werror conflicts with
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
-Patch0:            nginx-auto-cc-gcc.patch
+Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
 # downstream patch - changing logs permissions to 664 instead
 # previous 644
-Patch2:            nginx-1.12.1-logs-perm.patch
+Patch1:            0002-change-logs-permissions-to-664.patch
+
+# CVE-2019-20372
+Patch2:            0003-Discard-request-body-when-redirecting-to-a-URL-via-e.patch
 
 BuildRequires:     gcc
 %if 0%{?with_gperftools}
@@ -178,9 +181,7 @@ Requires:          nginx
 
 
 %prep
-%setup -q
-%patch0 -p0
-%patch2 -p1
+%autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
 %if 0%{?rhel} > 0 && 0%{?rhel} < 8
@@ -477,6 +478,11 @@ fi
 
 
 %changelog
+* Sun Jun 07 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.16.1-2
+- fix 404.html location and indenting (rhbz#1409685)
+- include patch for CVE-2019-20372 (rhbz#1790280)
+- rework patches to work with %%autosetup
+
 * Sun Sep 15 2019 Warren Togami <warren@blockstream.com>
 - add conditionals for EPEL7, see rhbz#1750857
 
