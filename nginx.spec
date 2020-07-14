@@ -23,7 +23,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.18.0
-Release:           2%{?dist}
+Release:           3%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -269,11 +269,11 @@ if ! ./configure \
   exit 1
 fi
 
-make %{?_smp_mflags}
+%make_build
 
 
 %install
-make install DESTDIR=%{buildroot} INSTALLDIRS=vendor
+%make_install INSTALLDIRS=vendor
 
 find %{buildroot} -type f -name .packlist -exec rm -f '{}' \;
 find %{buildroot} -type f -name perllocal.pod -exec rm -f '{}' \;
@@ -489,6 +489,10 @@ fi
 
 
 %changelog
+* Tue Jul 14 2020 Tom Stellard <tstellar@redhat.com> - 1:1.18.0-3
+- Use make macros
+- https://fedoraproject.org/wiki/Changes/UseMakeBuildInstallMacro
+
 * Mon Jun 22 2020 Jitka Plesnikova <jplesnik@redhat.com> - 1:1.18.0-2
 - Perl 5.32 rebuild
 
