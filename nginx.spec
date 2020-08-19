@@ -228,7 +228,6 @@ if ! ./configure \
 %if 0%{?with_aio}
     --with-file-aio \
 %endif
-    --with-ipv6 \
     --with-http_ssl_module \
     --with-http_v2_module \
     --with-http_realip_module \
@@ -489,6 +488,9 @@ fi
 
 
 %changelog
+* Wed Aug 19 2020 Pavel Starosek <starosekpd@gmail.com> - 1:1.18.0-3
+- Remove obsolete --with-ipv6
+
 * Tue Jul 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.18.0-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
 
