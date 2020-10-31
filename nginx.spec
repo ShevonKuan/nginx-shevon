@@ -23,7 +23,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.16.1
-Release:           2%{?dist}
+Release:           3%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -58,7 +58,11 @@ BuildRequires:     gcc
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
+%if 0%{?fedora} || 0%{?rhel} >= 8
 BuildRequires:     openssl-devel
+%else
+BuildRequires:     openssl11-devel
+%endif
 BuildRequires:     pcre-devel
 BuildRequires:     zlib-devel
 
@@ -187,6 +191,13 @@ cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 %if 0%{?rhel} > 0 && 0%{?rhel} < 8
 sed -i -e 's#KillMode=.*#KillMode=process#g' nginx.service
 sed -i -e 's#PROFILE=SYSTEM#HIGH:!aNULL:!MD5#' nginx.conf
+%endif
+
+%if 0%{?rhel} == 7
+sed \
+  -e 's|\(ngx_feature_path=\)$|\1%{_includedir}/openssl11|' \
+  -e 's|\(ngx_feature_libs="\)|\1-L%{_libdir}/openssl11 |' \
+  -i auto/lib/openssl/conf
 %endif
 
 
@@ -478,6 +489,9 @@ fi
 
 
 %changelog
+* Sat Oct 31 2020 Robert Scheck <robert@fedoraproject.org> - 1:1.16.1-3
+- Build against OpenSSL 1.1 on RHEL/CentOS 7 (for TLSv1.3 support)
+
 * Sun Jun 07 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.16.1-2
 - fix 404.html location and indenting (rhbz#1409685)
 - include patch for CVE-2019-20372 (rhbz#1790280)
