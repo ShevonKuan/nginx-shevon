@@ -7,11 +7,17 @@
 
 %bcond_with geoip
 
+# nginx gperftools support should be dissabled for RHEL >= 8
+# see: https://bugzilla.redhat.com/show_bug.cgi?id=1931402
+%if 0%{?rhel} >= 8
+%global with_gperftools 0
+%else
 # gperftools exist only on selected arches
 # gperftools *detection* is failing on ppc64*, possibly only configure
 # bug, but disable anyway.
 %ifnarch s390 s390x ppc64 ppc64le
 %global with_gperftools 1
+%endif
 %endif
 
 %global with_aio 1
@@ -22,7 +28,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.19.7
+Version:           1.19.8
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -56,6 +62,7 @@ Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 # previous 644
 Patch1:            0002-change-logs-permissions-to-664.patch
 
+BuildRequires:     make
 BuildRequires:     gcc
 BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
@@ -265,11 +272,11 @@ if ! ./configure \
   exit 1
 fi
 
-make %{?_smp_mflags}
+%make_build
 
 
 %install
-make install DESTDIR=%{buildroot} INSTALLDIRS=vendor
+%make_install INSTALLDIRS=vendor
 
 find %{buildroot} -type f -name .packlist -exec rm -f '{}' \;
 find %{buildroot} -type f -name perllocal.pod -exec rm -f '{}' \;
@@ -485,6 +492,12 @@ fi
 
 
 %changelog
+* Tue Mar 09 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.19.8-1
+- update mainline to 1.19.8
+- use make macros
+- add BR on make
+- Resolves: #1931402 - drop gperftools module
+
 * Tue Feb 16 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.19.7-1
 - update mainline to 1.19.7
 
