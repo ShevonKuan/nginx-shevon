@@ -29,7 +29,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.18.0
-Release:           5%{?dist}
+Release:           6%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -70,7 +70,11 @@ BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
+%if 0%{?fedora} || 0%{?rhel} >= 8
 BuildRequires:     openssl-devel
+%else
+BuildRequires:     openssl11-devel
+%endif
 BuildRequires:     pcre-devel
 BuildRequires:     zlib-devel
 
@@ -98,7 +102,9 @@ Requires(pre):     nginx-filesystem
 Requires:          nginx-mimetypes
 %endif
 Provides:          webserver
+%if 0%{?fedora} || 0%{?rhel} >= 8
 Recommends:        logrotate
+%endif
 
 BuildRequires:     systemd
 Requires(post):    systemd
@@ -205,6 +211,11 @@ cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 %if 0%{?rhel} > 0 && 0%{?rhel} < 8
 sed -i -e 's#KillMode=.*#KillMode=process#g' nginx.service
 sed -i -e 's#PROFILE=SYSTEM#HIGH:!aNULL:!MD5#' nginx.conf
+
+sed \
+  -e 's|\(ngx_feature_path=\)$|\1%{_includedir}/openssl11|' \
+  -e 's|\(ngx_feature_libs="\)|\1-L%{_libdir}/openssl11 |' \
+  -i auto/lib/openssl/conf
 %endif
 
 
@@ -496,6 +507,9 @@ fi
 
 
 %changelog
+* Sun Mar 28 2021 Robert Scheck <robert@fedoraproject.org> - 1:1.18.0-6
+- Build against OpenSSL 1.1 on RHEL/CentOS 7 (for TLSv1.3 support)
+
 * Mon Feb 22 2021 Lubos Uhliarik <luhliari@redhat.com> - 1:1.18.0-5
 - Resolves: #1931402 - drop gperftools module
 
