@@ -1,6 +1,9 @@
 [Unit]
 Description=The nginx HTTP and reverse proxy server
-After=network.target remote-fs.target nss-lookup.target
+# We require network-online.target since some features like OCSP stapling
+# require working DNS resolvers
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
 
 [Service]
 Type=forking
