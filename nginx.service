@@ -1,6 +1,7 @@
 [Unit]
 Description=The nginx HTTP and reverse proxy server
-After=network.target remote-fs.target nss-lookup.target
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
 
 [Service]
 Type=forking
@@ -11,7 +12,7 @@ PIDFile=/run/nginx.pid
 ExecStartPre=/usr/bin/rm -f /run/nginx.pid
 ExecStartPre=/usr/sbin/nginx -t
 ExecStart=/usr/sbin/nginx
-ExecReload=/bin/kill -s HUP $MAINPID
+ExecReload=/usr/sbin/nginx -s reload
 KillSignal=SIGQUIT
 TimeoutStopSec=5
 KillMode=mixed

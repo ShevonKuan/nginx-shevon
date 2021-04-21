@@ -7,31 +7,42 @@
 
 %bcond_with geoip
 
+# nginx gperftools support should be dissabled for RHEL >= 8
+# see: https://bugzilla.redhat.com/show_bug.cgi?id=1931402
+%if 0%{?rhel} >= 8
+%global with_gperftools 0
+%else
 # gperftools exist only on selected arches
 # gperftools *detection* is failing on ppc64*, possibly only configure
 # bug, but disable anyway.
 %ifnarch s390 s390x ppc64 ppc64le
 %global with_gperftools 1
 %endif
+%endif
 
 %global with_aio 1
 
-%if 0%{?fedora} > 22 || 0%{?rhel} >= 8
+%if 0%{?fedora} > 22
 %global with_mailcap_mimetypes 1
 %endif
 
 Name:              nginx
 Epoch:             1
-Version:           1.16.1
-Release:           3%{?dist}
+Version:           1.20.0
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
 # http://www.freebsd.org/copyright/freebsd-license.html
 License:           BSD
-URL:               http://nginx.org/
+URL:               https://nginx.org
 
 Source0:           https://nginx.org/download/nginx-%{version}.tar.gz
+Source1:           https://nginx.org/download/nginx-%{version}.tar.gz.asc
+# Keys are found here: https://nginx.org/en/pgp_keys.html
+Source2:           https://nginx.org/keys/maxim.key
+Source3:           https://nginx.org/keys/mdounin.key
+Source4:           https://nginx.org/keys/sb.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -47,14 +58,13 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
 Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
-# downstream patch - changing logs permissions to 664 instead
-# previous 644
-Patch1:            0002-change-logs-permissions-to-664.patch
+# downstream patch - fix PIDFile race condition (rhbz#1869026)
+# rejected upstream: https://trac.nginx.org/nginx/ticket/1897
+Patch1:            0002-fix-PIDFile-handling.patch
 
-# CVE-2019-20372
-Patch2:            0003-Discard-request-body-when-redirecting-to-a-URL-via-e.patch
-
+BuildRequires:     make
 BuildRequires:     gcc
+BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
@@ -78,11 +88,6 @@ Obsoletes:         nginx-mod-http-geoip <= 1:1.16
 Requires:          system-logos-httpd
 %endif
 
-%if 0%{?rhel} > 0 && 0%{?rhel} < 8
-# Introduced at 1:1.10.0-1 to ease upgrade path. To be removed later.
-Requires:          nginx-all-modules = %{epoch}:%{version}-%{release}
-%endif
-
 Requires:          openssl
 Requires:          pcre
 Requires(pre):     nginx-filesystem
@@ -90,6 +95,9 @@ Requires(pre):     nginx-filesystem
 Requires:          nginx-mimetypes
 %endif
 Provides:          webserver
+%if 0%{?fedora} || 0%{?rhel} >= 8
+Recommends:        logrotate
+%endif
 
 BuildRequires:     systemd
 Requires(post):    systemd
@@ -185,6 +193,9 @@ Requires:          nginx
 
 
 %prep
+# Combine all keys from upstream into one file
+cat %{S:2} %{S:3} %{S:4} > %{_builddir}/%{name}.gpg
+%{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
 
@@ -225,43 +236,44 @@ if ! ./configure \
     --lock-path=/run/lock/subsys/nginx \
     --user=%{nginx_user} \
     --group=%{nginx_user} \
+    --with-compat \
+    --with-debug \
 %if 0%{?with_aio}
     --with-file-aio \
 %endif
-    --with-ipv6 \
-    --with-http_ssl_module \
-    --with-http_v2_module \
-    --with-http_realip_module \
-    --with-stream_ssl_preread_module \
+%if 0%{?with_gperftools}
+    --with-google_perftools_module \
+%endif
     --with-http_addition_module \
-    --with-http_xslt_module=dynamic \
-    --with-http_image_filter_module=dynamic \
+    --with-http_auth_request_module \
+    --with-http_dav_module \
+    --with-http_degradation_module \
+    --with-http_flv_module \
 %if %{with geoip}
     --with-http_geoip_module=dynamic \
 %endif
-    --with-http_sub_module \
-    --with-http_dav_module \
-    --with-http_flv_module \
-    --with-http_mp4_module \
     --with-http_gunzip_module \
     --with-http_gzip_static_module \
-    --with-http_random_index_module \
-    --with-http_secure_link_module \
-    --with-http_degradation_module \
-    --with-http_slice_module \
-    --with-http_stub_status_module \
+    --with-http_image_filter_module=dynamic \
+    --with-http_mp4_module \
     --with-http_perl_module=dynamic \
-    --with-http_auth_request_module \
+    --with-http_random_index_module \
+    --with-http_realip_module \
+    --with-http_secure_link_module \
+    --with-http_slice_module \
+    --with-http_ssl_module \
+    --with-http_stub_status_module \
+    --with-http_sub_module \
+    --with-http_v2_module \
+    --with-http_xslt_module=dynamic \
     --with-mail=dynamic \
     --with-mail_ssl_module \
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
     --with-stream_ssl_module \
-%if 0%{?with_gperftools}
-    --with-google_perftools_module \
-%endif
-    --with-debug \
+    --with-stream_ssl_preread_module \
+    --with-threads \
     --with-cc-opt="%{optflags} $(pcre-config --cflags)" \
     --with-ld-opt="$nginx_ldopts"; then
   : configure failed
@@ -269,11 +281,11 @@ if ! ./configure \
   exit 1
 fi
 
-make %{?_smp_mflags}
+%make_build
 
 
 %install
-make install DESTDIR=%{buildroot} INSTALLDIRS=vendor
+%make_install INSTALLDIRS=vendor
 
 find %{buildroot} -type f -name .packlist -exec rm -f '{}' \;
 find %{buildroot} -type f -name perllocal.pod -exec rm -f '{}' \;
@@ -444,7 +456,7 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
-%attr(770,%{nginx_user},root) %dir %{_localstatedir}/log/nginx
+%dir %{_localstatedir}/log/nginx
 %dir %{_libdir}/nginx/modules
 
 %files all-modules
@@ -489,13 +501,46 @@ fi
 
 
 %changelog
-* Sat Oct 31 2020 Robert Scheck <robert@fedoraproject.org> - 1:1.16.1-3
-- Build against OpenSSL 1.1 on RHEL/CentOS 7 (for TLSv1.3 support)
+* Wed Apr 21 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.0-2
+- sync rawhide and EPEL7 spec files again
+- systemd service reload now checks config file (rhbz#1565377)
+- drop nginx requirement on nginx-all-modules (rhbz#1708799)
+- let nginx handle log creation on logrotate (rhbz#1683388)
+- have log directory owned by root (rhbz#1390183, CVE-2016-1247)
+- remove obsolete --with-ipv6 (src PR#8)
+- correction: pcre2 is actually not supported by nginx, reintroduce pcre
 
-* Sun Jun 07 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.16.1-2
-- fix 404.html location and indenting (rhbz#1409685)
-- include patch for CVE-2019-20372 (rhbz#1790280)
-- rework patches to work with %%autosetup
+* Wed Apr 21 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.0-1
+- update to 1.20.0
+- sync with mainline spec file
+- order configure options alphabetically for easier comparinggit
+- add --with-compat option (rhbz#1834452)
+- add patch to fix PIDFile race condition (rhbz#1869026)
+- use pcre2 instead of pcre (rhbz#1938984)
+- add Wants=network-online.target to systemd unit (rhbz#1943779)
+
+* Mon Feb 22 2021 Lubos Uhliarik <luhliari@redhat.com> - 1:1.18.0-5
+- Resolves: #1931402 - drop gperftools module
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.18.0-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
+* Tue Jul 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.18.0-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Mon Jun 22 2020 Jitka Plesnikova <jplesnik@redhat.com> - 1:1.18.0-2
+- Perl 5.32 rebuild
+
+* Fri Apr 24 2020 Felix Kaechele <heffer@fedoraproject.org> - 1:1.18.0-1
+- Update to 1.18.0
+- Increased types_hash_max_size to 4096 in default config
+- Add gpg source verification
+- Add Recommends: logrotate
+- Drop location / from default config (rhbz#1564768)
+- Drop default_sever from default config (rhbz#1373822)
+
+* Wed Jan 29 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1:1.16.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
 
 * Sun Sep 15 2019 Warren Togami <warren@blockstream.com>
 - add conditionals for EPEL7, see rhbz#1750857
