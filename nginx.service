@@ -1,7 +1,5 @@
 [Unit]
 Description=The nginx HTTP and reverse proxy server
-# We require network-online.target since some features like OCSP stapling
-# require working DNS resolvers
 After=network-online.target remote-fs.target nss-lookup.target
 Wants=network-online.target
 
@@ -14,7 +12,7 @@ PIDFile=/run/nginx.pid
 ExecStartPre=/usr/bin/rm -f /run/nginx.pid
 ExecStartPre=/usr/sbin/nginx -t
 ExecStart=/usr/sbin/nginx
-ExecReload=/bin/kill -s HUP $MAINPID
+ExecReload=/usr/sbin/nginx -s reload
 KillSignal=SIGQUIT
 TimeoutStopSec=5
 KillMode=mixed

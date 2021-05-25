@@ -1,4 +1,4 @@
-From cb8f5d414202b098cadbbe5637d79a3cf73b4bf9 Mon Sep 17 00:00:00 2001
+From 00cab63102084b89de0a3494a1d023c4b1d4982b Mon Sep 17 00:00:00 2001
 From: Felix Kaechele <felix@kaechele.ca>
 Date: Sun, 7 Jun 2020 12:14:02 -0400
 Subject: [PATCH 1/2] remove Werror in upstream build scripts
@@ -27,5 +27,5 @@ index a5c5c18..cdbbadb 100644
  # debug
  CFLAGS="$CFLAGS -g"
 -- 
-2.26.2
+2.31.1
 

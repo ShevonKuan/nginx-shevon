@@ -28,7 +28,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.19.10
+Version:           1.21.0
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -58,9 +58,9 @@ Source210:         UPGRADE-NOTES-1.6-to-1.10
 # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
 Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
-# downstream patch - changing logs permissions to 664 instead
-# previous 644
-Patch1:            0002-change-logs-permissions-to-664.patch
+# downstream patch - fix PIDFile race condition (rhbz#1869026)
+# rejected upstream: https://trac.nginx.org/nginx/ticket/1897
+Patch1:            0002-fix-PIDFile-handling.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -68,7 +68,11 @@ BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
+%if 0%{?fedora} || 0%{?rhel} >= 8
 BuildRequires:     openssl-devel
+%else
+BuildRequires:     openssl11-devel
+%endif
 BuildRequires:     pcre-devel
 BuildRequires:     zlib-devel
 
@@ -84,11 +88,6 @@ Obsoletes:         nginx-mod-http-geoip <= 1:1.16
 Requires:          system-logos-httpd
 %endif
 
-%if 0%{?rhel} > 0 && 0%{?rhel} < 8
-# Introduced at 1:1.10.0-1 to ease upgrade path. To be removed later.
-Requires:          nginx-all-modules = %{epoch}:%{version}-%{release}
-%endif
-
 Requires:          openssl
 Requires:          pcre
 Requires(pre):     nginx-filesystem
@@ -96,7 +95,9 @@ Requires(pre):     nginx-filesystem
 Requires:          nginx-mimetypes
 %endif
 Provides:          webserver
+%if 0%{?fedora} || 0%{?rhel} >= 8
 Recommends:        logrotate
+%endif
 
 BuildRequires:     systemd
 Requires(post):    systemd
@@ -203,6 +204,13 @@ sed -i -e 's#KillMode=.*#KillMode=process#g' nginx.service
 sed -i -e 's#PROFILE=SYSTEM#HIGH:!aNULL:!MD5#' nginx.conf
 %endif
 
+%if 0%{?rhel} == 7
+sed \
+  -e 's|\(ngx_feature_path=\)$|\1%{_includedir}/openssl11|' \
+  -e 's|\(ngx_feature_libs="\)|\1-L%{_libdir}/openssl11 |' \
+  -i auto/lib/openssl/conf
+%endif
+
 
 %build
 # nginx does not utilize a standard configure script.  It has its own
@@ -228,43 +236,44 @@ if ! ./configure \
     --lock-path=/run/lock/subsys/nginx \
     --user=%{nginx_user} \
     --group=%{nginx_user} \
+    --with-compat \
+    --with-debug \
 %if 0%{?with_aio}
     --with-file-aio \
 %endif
-    --with-ipv6 \
-    --with-http_ssl_module \
-    --with-http_v2_module \
-    --with-http_realip_module \
-    --with-stream_ssl_preread_module \
+%if 0%{?with_gperftools}
+    --with-google_perftools_module \
+%endif
     --with-http_addition_module \
-    --with-http_xslt_module=dynamic \
-    --with-http_image_filter_module=dynamic \
+    --with-http_auth_request_module \
+    --with-http_dav_module \
+    --with-http_degradation_module \
+    --with-http_flv_module \
 %if %{with geoip}
     --with-http_geoip_module=dynamic \
 %endif
-    --with-http_sub_module \
-    --with-http_dav_module \
-    --with-http_flv_module \
-    --with-http_mp4_module \
     --with-http_gunzip_module \
     --with-http_gzip_static_module \
-    --with-http_random_index_module \
-    --with-http_secure_link_module \
-    --with-http_degradation_module \
-    --with-http_slice_module \
-    --with-http_stub_status_module \
+    --with-http_image_filter_module=dynamic \
+    --with-http_mp4_module \
     --with-http_perl_module=dynamic \
-    --with-http_auth_request_module \
+    --with-http_random_index_module \
+    --with-http_realip_module \
+    --with-http_secure_link_module \
+    --with-http_slice_module \
+    --with-http_ssl_module \
+    --with-http_stub_status_module \
+    --with-http_sub_module \
+    --with-http_v2_module \
+    --with-http_xslt_module=dynamic \
     --with-mail=dynamic \
     --with-mail_ssl_module \
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
     --with-stream_ssl_module \
-%if 0%{?with_gperftools}
-    --with-google_perftools_module \
-%endif
-    --with-debug \
+    --with-stream_ssl_preread_module \
+    --with-threads \
     --with-cc-opt="%{optflags} $(pcre-config --cflags)" \
     --with-ld-opt="$nginx_ldopts"; then
   : configure failed
@@ -314,7 +323,7 @@ ln -s ../../doc/HTML/img \
 ln -s ../../doc/HTML/en-US \
       %{buildroot}%{_datadir}/nginx/html/en-US
 %else
-ln -s ../../fedora-testpage/index.html \
+ln -s ../../testpage/index.html \
       %{buildroot}%{_datadir}/nginx/html/index.html
 %endif
 install -p -m 0644 %{SOURCE102} \
@@ -447,7 +456,7 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
-%attr(770,%{nginx_user},root) %dir %{_localstatedir}/log/nginx
+%dir %{_localstatedir}/log/nginx
 %dir %{_libdir}/nginx/modules
 
 %files all-modules
@@ -492,6 +501,9 @@ fi
 
 
 %changelog
+* Tue May 25 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.0-1
+- update to 1.21.0
+
 * Tue Apr 13 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.19.10-1
 - update to 1.19.10
 
