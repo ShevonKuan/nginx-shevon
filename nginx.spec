@@ -29,7 +29,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.21.0
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -305,7 +305,7 @@ install -p -d -m 0755 %{buildroot}%{_sysconfdir}/nginx/default.d
 
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx/tmp
-install -p -d -m 0700 %{buildroot}%{_localstatedir}/log/nginx
+install -p -d -m 0711 %{buildroot}%{_localstatedir}/log/nginx
 
 install -p -d -m 0755 %{buildroot}%{_datadir}/nginx/html
 install -p -d -m 0755 %{buildroot}%{_datadir}/nginx/modules
@@ -456,7 +456,9 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
-%dir %{_localstatedir}/log/nginx
+%attr(711,root,root) %dir %{_localstatedir}/log/nginx
+%ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/access.log
+%ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/error.log
 %dir %{_libdir}/nginx/modules
 
 %files all-modules
@@ -501,6 +503,9 @@ fi
 
 
 %changelog
+* Wed Jun 02 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.0-2
+- forward-port log permissions fix from main branch
+
 * Tue May 25 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.0-1
 - update to 1.21.0
 
