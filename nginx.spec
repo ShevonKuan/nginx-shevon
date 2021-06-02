@@ -29,7 +29,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.20.1
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -456,7 +456,9 @@ fi
 %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
-%dir %{_localstatedir}/log/nginx
+%attr(711,root,root) %dir %{_localstatedir}/log/nginx
+%ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/access.log
+%ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/error.log
 %dir %{_libdir}/nginx/modules
 
 %files all-modules
@@ -501,6 +503,9 @@ fi
 
 
 %changelog
+* Tue Jun 01 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.1-2
+- use different fix for rhbz#1683388 as it introduced permissions issues in 1:1.20.0-2
+
 * Tue May 25 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.1-1
 - update to 1.20.1 (fixes CVE-2021-23017)
 
