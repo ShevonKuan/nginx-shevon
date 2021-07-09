@@ -28,8 +28,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.21.0
-Release:           2%{?dist}
+Version:           1.21.1
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -503,6 +503,9 @@ fi
 
 
 %changelog
+* Fri Jul 09 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.1-1
+- update to 1.21.1
+
 * Wed Jun 02 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.0-2
 - forward-port log permissions fix from main branch
 
