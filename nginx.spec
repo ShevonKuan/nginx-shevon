@@ -40,7 +40,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.21.1
+Version:           1.21.2
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -351,7 +351,7 @@ install -p -d -m 0755 %{buildroot}%{_sysconfdir}/nginx/default.d
 
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx/tmp
-install -p -d -m 0700 %{buildroot}%{_localstatedir}/log/nginx
+install -p -d -m 0711 %{buildroot}%{_localstatedir}/log/nginx
 
 install -p -d -m 0755 %{buildroot}%{_datadir}/nginx/html
 install -p -d -m 0755 %{buildroot}%{nginx_moduleconfdir}
@@ -575,6 +575,9 @@ fi
 
 
 %changelog
+* Fri Sep 03 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.2-1
+- update to 1.21.2
+
 * Tue Aug 10 2021 Neal Gompa <ngompa@datto.com> - 1:1.20.1-6
 - Add -mod-devel subpackage for building external nginx modules (rhbz#1989778)
 
