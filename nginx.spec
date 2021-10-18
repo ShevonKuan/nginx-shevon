@@ -41,7 +41,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.20.1
-Release:           8%{?dist}
+Release:           9%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -434,7 +434,7 @@ sed -e "s|@@NGINX_ABIVERSION@@|%{nginx_abiversion}|g" \
     -e "s|@@NGINX_SRCDIR@@|%{nginx_srcdir}|g" \
     %{SOURCE15} > %{buildroot}%{_rpmmacrodir}/macros.nginxmods
 ## Install dependency generator
-install -Dpm0644 -t %{buildroot}%{_fileattrsdir} %{SOURCE16}
+install -Dpm0644 %{SOURCE16} %{buildroot}%{_fileattrsdir}/nginxmods.attr
 
 
 %pre filesystem
@@ -578,6 +578,9 @@ fi
 
 
 %changelog
+* Mon Oct 18 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.1-9
+- fix installation of nginxmods.attr for EPEL 7
+
 * Mon Oct 18 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.1-8
 - Fix "file size changed while zipping" when rotating logs (rhbz#1980948,2015249,2015243)
 
