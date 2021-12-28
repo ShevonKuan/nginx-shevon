@@ -41,7 +41,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.21.5
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -87,7 +87,7 @@ BuildRequires:     openssl-devel
 %else
 BuildRequires:     openssl11-devel
 %endif
-BuildRequires:     pcre-devel
+BuildRequires:     pcre2-devel
 BuildRequires:     zlib-devel
 
 Requires:          nginx-filesystem = %{epoch}:%{version}-%{release}
@@ -102,8 +102,6 @@ Obsoletes:         nginx-mod-http-geoip <= 1:1.16
 Requires:          system-logos-httpd
 %endif
 
-Requires:          openssl
-Requires:          pcre
 Requires(pre):     nginx-filesystem
 %if 0%{?with_mailcap_mimetypes}
 Requires:          nginx-mimetypes
@@ -225,7 +223,7 @@ Requires:          openssl-devel
 %else
 Requires:          openssl11-devel
 %endif
-Requires:          pcre-devel
+Requires:          pcre2-devel
 Requires:          perl-devel
 Requires:          perl(ExtUtils::Embed)
 Requires:          zlib-devel
@@ -320,7 +318,7 @@ if ! ./configure \
     --with-stream_ssl_module \
     --with-stream_ssl_preread_module \
     --with-threads \
-    --with-cc-opt="%{optflags} $(pcre-config --cflags)" \
+    --with-cc-opt="%{optflags} $(pcre2-config --cflags)" \
     --with-ld-opt="$nginx_ldopts"; then
   : configure failed
   cat objs/autoconf.err
@@ -575,6 +573,11 @@ fi
 
 
 %changelog
+* Tue Dec 28 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.5-2
+- switch to PCRE2
+- drop unnecessary pcre and openssl Requires, these are pulled in through
+  RPM's library dependency tracking
+
 * Tue Dec 28 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.5-1
 - update to 1.21.5
 
