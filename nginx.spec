@@ -40,7 +40,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.21.4
+Version:           1.21.5
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -575,6 +575,9 @@ fi
 
 
 %changelog
+* Tue Dec 28 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.5-1
+- update to 1.21.5
+
 * Tue Nov 02 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.4-1
 - update to 1.21.4
 
