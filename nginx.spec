@@ -40,8 +40,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.21.5
-Release:           2%{?dist}
+Version:           1.21.6
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -573,6 +573,9 @@ fi
 
 
 %changelog
+* Tue Jan 25 2022 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.6-1
+- update to 1.21.6
+
 * Tue Dec 28 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.5-2
 - switch to PCRE2
 - drop unnecessary pcre and openssl Requires, these are pulled in through
