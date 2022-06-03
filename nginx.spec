@@ -41,7 +41,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.21.6
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -55,6 +55,7 @@ Source1:           https://nginx.org/download/nginx-%{version}.tar.gz.asc
 Source2:           https://nginx.org/keys/maxim.key
 Source3:           https://nginx.org/keys/mdounin.key
 Source4:           https://nginx.org/keys/sb.key
+Source5:           https://nginx.org/keys/thresh.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -102,14 +103,11 @@ Obsoletes:         nginx-mod-http-geoip <= 1:1.16
 Requires:          system-logos-httpd
 %endif
 
-Requires(pre):     nginx-filesystem
-%if 0%{?with_mailcap_mimetypes}
-Requires:          nginx-mimetypes
-%endif
 Provides:          webserver
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Recommends:        logrotate
 %endif
+Requires:          %{name}-core = %{epoch}:%{version}-%{release}
 
 BuildRequires:     systemd
 Requires(post):    systemd
@@ -122,6 +120,17 @@ Provides:          nginx(abi) = %{nginx_abiversion}
 Nginx is a web server and a reverse proxy server for HTTP, SMTP, POP3 and
 IMAP protocols, with a strong focus on high concurrency, performance and low
 memory usage.
+
+%package core
+Summary: nginx minimal core
+%if 0%{?with_mailcap_mimetypes}
+Requires:          nginx-mimetypes
+%endif
+Requires:          openssl-libs
+Requires(pre):     nginx-filesystem
+
+%description core
+nginx minimal core
 
 %package all-modules
 Summary:           A meta package that installs all available Nginx modules
@@ -234,7 +243,7 @@ Requires:          zlib-devel
 
 %prep
 # Combine all keys from upstream into one file
-cat %{S:2} %{S:3} %{S:4} > %{_builddir}/%{name}.gpg
+cat %{S:2} %{S:3} %{S:4} %{S:5} > %{_builddir}/%{name}.gpg
 %{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
@@ -295,6 +304,7 @@ if ! ./configure \
     --with-http_flv_module \
 %if %{with geoip}
     --with-http_geoip_module=dynamic \
+    --with-stream_geoip_module=dynamic \
 %endif
     --with-http_gunzip_module \
     --with-http_gzip_static_module \
@@ -315,6 +325,7 @@ if ! ./configure \
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
+    --with-stream_realip_module \
     --with-stream_ssl_module \
     --with-stream_ssl_preread_module \
     --with-threads \
@@ -349,7 +360,7 @@ install -p -d -m 0755 %{buildroot}%{_sysconfdir}/nginx/default.d
 
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx
 install -p -d -m 0700 %{buildroot}%{_localstatedir}/lib/nginx/tmp
-install -p -d -m 0711 %{buildroot}%{_localstatedir}/log/nginx
+install -p -d -m 0700 %{buildroot}%{_localstatedir}/log/nginx
 
 install -p -d -m 0755 %{buildroot}%{_datadir}/nginx/html
 install -p -d -m 0755 %{buildroot}%{nginx_moduleconfdir}
@@ -429,7 +440,7 @@ sed -e "s|@@NGINX_ABIVERSION@@|%{nginx_abiversion}|g" \
     -e "s|@@NGINX_SRCDIR@@|%{nginx_srcdir}|g" \
     %{SOURCE15} > %{buildroot}%{_rpmmacrodir}/macros.nginxmods
 ## Install dependency generator
-install -Dpm0644 -t %{buildroot}%{_fileattrsdir} %{SOURCE16}
+install -Dpm0644 %{SOURCE16} %{buildroot}%{_fileattrsdir}/nginxmods.attr
 
 
 %pre filesystem
@@ -484,14 +495,11 @@ if [ $1 -ge 1 ]; then
 fi
 
 %files
-%license LICENSE
-%doc CHANGES README README.dynamic
 %if 0%{?rhel} == 7
 %doc UPGRADE-NOTES-1.6-to-1.10
 %endif
 %{_datadir}/nginx/html/*
 %{_bindir}/nginx-upgrade
-%{_sbindir}/nginx
 %{_datadir}/vim/vimfiles/ftdetect/nginx.vim
 %{_datadir}/vim/vimfiles/ftplugin/nginx.vim
 %{_datadir}/vim/vimfiles/syntax/nginx.vim
@@ -500,6 +508,11 @@ fi
 %{_mandir}/man8/nginx.8*
 %{_mandir}/man8/nginx-upgrade.8*
 %{_unitdir}/nginx.service
+
+%files core
+%license LICENSE
+%doc CHANGES README README.dynamic
+%{_sbindir}/nginx
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf.default
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi_params
@@ -573,6 +586,9 @@ fi
 
 
 %changelog
+* Fri Jun 03 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.21.6-2
+- sync with main RPM package spec
+
 * Tue Jan 25 2022 Felix Kaechele <heffer@fedoraproject.org> - 1:1.21.6-1
 - update to 1.21.6
 
