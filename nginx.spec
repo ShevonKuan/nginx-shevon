@@ -40,8 +40,8 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.21.6
-Release:           2%{?dist}
+Version:           1.23.0
+Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -586,6 +586,9 @@ fi
 
 
 %changelog
+* Tue Jun 21 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.23.0-1
+- update to 1.23.0
+
 * Fri Jun 03 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.21.6-2
 - sync with main RPM package spec
 
