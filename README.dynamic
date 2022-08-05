@@ -16,5 +16,5 @@ Prevent dynamic modules from being enabled automatically
 You may want to avoid dynamic modules being enabled automatically. Simply
 remove this line from the top of /etc/nginx/nginx.conf:
 
-    include /usr/lib64/nginx/modules/*.conf;
+    include /usr/share/nginx/modules/*.conf;
 
