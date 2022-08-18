@@ -7,12 +7,12 @@
 
 %bcond_with geoip
 
-# nginx gperftools support should be dissabled for RHEL >= 8
+# nginx gperftools support should be disabled for RHEL >= 8
 # see: https://bugzilla.redhat.com/show_bug.cgi?id=1931402
 %if 0%{?rhel} >= 8
 %global with_gperftools 0
 %else
-# gperftools exist only on selected arches
+# gperftools exists only on selected arches
 # gperftools *detection* is failing on ppc64*, possibly only configure
 # bug, but disable anyway.
 %ifnarch s390 s390x ppc64 ppc64le
@@ -24,6 +24,21 @@
 
 %if 0%{?fedora} > 22
 %global with_mailcap_mimetypes 1
+%endif
+
+# kTLS requires OpenSSL 3.0 (default in F36+ and EL9+, available in EPEL8)
+%if 0%{?fedora} >= 36 || 0%{?rhel} >= 8
+%global with_ktls 1
+%endif
+
+# Build against OpenSSL 1.1 on EL7
+%if 0%{?rhel} == 7
+%global openssl_pkgversion 11
+%endif
+
+# Build against OpenSSL 3 on EL8
+%if 0%{?rhel} == 8
+%global openssl_pkgversion 3
 %endif
 
 # Cf. https://www.nginx.com/blog/creating-installable-packages-dynamic-modules/
@@ -41,7 +56,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.23.1
-Release:           1%{?dist}
+Release:           2%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -83,11 +98,7 @@ BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
-%if 0%{?fedora} || 0%{?rhel} >= 8
-BuildRequires:     openssl-devel
-%else
-BuildRequires:     openssl11-devel
-%endif
+BuildRequires:     openssl%{?openssl_pkgversion}-devel
 BuildRequires:     pcre2-devel
 BuildRequires:     zlib-devel
 
@@ -126,8 +137,9 @@ Summary: nginx minimal core
 %if 0%{?with_mailcap_mimetypes}
 Requires:          nginx-mimetypes
 %endif
-Requires:          openssl-libs
+Requires:          openssl%{?openssl_pkgversion}-libs
 Requires(pre):     nginx-filesystem
+Conflicts:         nginx < 1:1.20.2-4
 
 %description core
 nginx minimal core
@@ -227,11 +239,7 @@ Requires:          gperftools-devel
 Requires:          GeoIP-devel
 %endif
 Requires:          libxslt-devel
-%if 0%{?fedora} || 0%{?rhel} >= 8
-Requires:          openssl-devel
-%else
-Requires:          openssl11-devel
-%endif
+Requires:          openssl%{?openssl_pkgversion}-devel
 Requires:          pcre2-devel
 Requires:          perl-devel
 Requires:          perl(ExtUtils::Embed)
@@ -253,10 +261,10 @@ sed -i -e 's#KillMode=.*#KillMode=process#g' nginx.service
 sed -i -e 's#PROFILE=SYSTEM#HIGH:!aNULL:!MD5#' nginx.conf
 %endif
 
-%if 0%{?rhel} == 7
+%if 0%{?openssl_pkgversion}
 sed \
-  -e 's|\(ngx_feature_path=\)$|\1%{_includedir}/openssl11|' \
-  -e 's|\(ngx_feature_libs="\)|\1-L%{_libdir}/openssl11 |' \
+  -e 's|\(ngx_feature_path=\)$|\1%{_includedir}/openssl%{openssl_pkgversion}|' \
+  -e 's|\(ngx_feature_libs="\)|\1-L%{_libdir}/openssl%{openssl_pkgversion} |' \
   -i auto/lib/openssl/conf
 %endif
 
@@ -322,6 +330,9 @@ if ! ./configure \
     --with-http_xslt_module=dynamic \
     --with-mail=dynamic \
     --with-mail_ssl_module \
+%if 0%{?with_ktls}
+    --with-openssl-opt=enable-ktls \
+%endif
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
@@ -586,6 +597,11 @@ fi
 
 
 %changelog
+* Wed Aug 17 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.23.1-2
+- sync with rawhide
+- build against OpenSSL 3 on EL8
+- enable kTLS support
+
 * Tue Jul 19 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.23.1-1
 - update to 1.23.1
 
