@@ -41,7 +41,7 @@
 Name:              nginx
 Epoch:             1
 Version:           1.20.1
-Release:           9%{?dist}
+Release:           10%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
 # BSD License (two clause)
@@ -78,6 +78,9 @@ Patch1:            0002-fix-PIDFile-handling.patch
 
 # Fix for CVE-2021-3618: ALPACA: Application Layer Protocol Confusion - Analyzing and Mitigating Cracks in TLS Authentication
 Patch2:            http://hg.nginx.org/nginx/raw-rev/ec1071830799
+
+# Fix for CVE-2022-41741 and CVE-2022-41742: Memory corruption/disclosure in the ngx_http_mp4_module
+Patch3:            0001-backport-fix-CVE-2022-41741-and-CVE-2022-41742.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -578,6 +581,9 @@ fi
 
 
 %changelog
+* Thu Nov 10 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.20.1-10
+- backport fix for CVE-2022-41741 and CVE-2022-41742
+
 * Mon Oct 18 2021 Felix Kaechele <heffer@fedoraproject.org> - 1:1.20.1-9
 - fix installation of nginxmods.attr for EPEL 7
 
