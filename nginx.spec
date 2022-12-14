@@ -55,7 +55,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.23.2
+Version:           1.23.3
 Release:           1%{?dist}
 
 Summary:           A high performance web server and reverse proxy server
@@ -597,6 +597,9 @@ fi
 
 
 %changelog
+* Wed Dec 14 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.23.3-1
+- update to 1.23.3
+
 * Wed Oct 19 2022 Felix Kaechele <felix@kaechele.ca> - 1:1.23.2-1
 - update to 1.23.2
 
