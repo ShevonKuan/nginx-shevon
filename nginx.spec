@@ -55,7 +55,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.23.3
+Version:           1.23.4
 Release:           %autorelease
 
 Summary:           A high performance web server and reverse proxy server
@@ -198,7 +198,6 @@ BuildRequires:     perl-generators
 %endif
 BuildRequires:     perl(ExtUtils::Embed)
 Requires:          nginx(abi) = %{nginx_abiversion}
-Requires:          perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 Requires:          perl(constant)
 
 %description mod-http-perl
