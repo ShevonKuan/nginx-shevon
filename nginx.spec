@@ -55,7 +55,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.25.2
+Version:           1.25.4
 Release:           %autorelease
 
 Summary:           A high performance web server and reverse proxy server
@@ -71,6 +71,7 @@ Source2:           https://nginx.org/keys/maxim.key
 Source3:           https://nginx.org/keys/mdounin.key
 Source4:           https://nginx.org/keys/sb.key
 Source5:           https://nginx.org/keys/thresh.key
+Source6:           https://nginx.org/keys/pluknet.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -250,7 +251,7 @@ Requires:          zlib-devel
 
 %prep
 # Combine all keys from upstream into one file
-cat %{S:2} %{S:3} %{S:4} %{S:5} > %{_builddir}/%{name}.gpg
+cat %{S:2} %{S:3} %{S:4} %{S:5} %{S:6} > %{_builddir}/%{name}.gpg
 %{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
