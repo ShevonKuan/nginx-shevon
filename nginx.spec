@@ -55,7 +55,7 @@
 
 Name:              nginx
 Epoch:             1
-Version:           1.24.0
+Version:           1.26.0
 Release:           %autorelease
 
 Summary:           A high performance web server and reverse proxy server
@@ -66,9 +66,10 @@ Source0:           https://nginx.org/download/nginx-%{version}.tar.gz
 Source1:           https://nginx.org/download/nginx-%{version}.tar.gz.asc
 # Keys are found here: https://nginx.org/en/pgp_keys.html
 Source2:           https://nginx.org/keys/maxim.key
-Source3:           https://nginx.org/keys/mdounin.key
-Source4:           https://nginx.org/keys/sb.key
-Source5:           https://nginx.org/keys/thresh.key
+Source3:           https://nginx.org/keys/arut.key
+Source4:           https://nginx.org/keys/pluknet.key
+Source5:           https://nginx.org/keys/sb.key
+Source6:           https://nginx.org/keys/thresh.key
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -78,8 +79,6 @@ Source15:          macros.nginxmods.in
 Source16:          nginxmods.attr
 Source17:          nginx-ssl-pass-dialog
 Source102:         nginx-logo.png
-Source103:         404.html
-Source104:         50x.html
 Source200:         README.dynamic
 Source210:         UPGRADE-NOTES-1.6-to-1.10
 
@@ -93,7 +92,7 @@ Patch1:            0002-fix-PIDFile-handling.patch
 
 # downstream patch - Add ssl-pass-phrase-dialog helper script for
 # encrypted private keys with pass phrase decryption
-Patch2:            0003-add-ssl-pass-phrase-dialog.patch
+Patch2:            0003-Add-SSL-passphrase-dialog.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -253,7 +252,7 @@ Requires:          zlib-devel
 
 %prep
 # Combine all keys from upstream into one file
-cat %{S:2} %{S:3} %{S:4} %{S:5} > %{_builddir}/%{name}.gpg
+cat %{S:2} %{S:3} %{S:4} %{S:5} %{S:6} > %{_builddir}/%{name}.gpg
 %{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %autosetup -p1
 cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
@@ -329,6 +328,7 @@ if ! ./configure \
     --with-http_stub_status_module \
     --with-http_sub_module \
     --with-http_v2_module \
+    --with-http_v3_module \
     --with-http_xslt_module=dynamic \
     --with-mail=dynamic \
     --with-mail_ssl_module \
@@ -407,9 +407,6 @@ ln -s ../../../pixmaps/poweredby.png \
 ln -s ../../pixmaps/system-noindex-logo.png \
       %{buildroot}%{_datadir}/nginx/html/system_noindex_logo.png
 %endif
-
-install -p -m 0644 %{SOURCE103} %{SOURCE104} \
-    %{buildroot}%{_datadir}/nginx/html
 
 %if 0%{?with_mailcap_mimetypes}
 rm -f %{buildroot}%{_sysconfdir}/nginx/mime.types

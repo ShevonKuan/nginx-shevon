@@ -1,7 +1,7 @@
-From 62470498cca9a209aa9904668c1949f5229123af Mon Sep 17 00:00:00 2001
+From 29c20440c27d6b13a4f933279da59fd8b442f5d7 Mon Sep 17 00:00:00 2001
 From: Felix Kaechele <felix@kaechele.ca>
 Date: Tue, 20 Apr 2021 21:28:18 -0400
-Subject: [PATCH 2/2] fix PIDFile handling
+Subject: [PATCH 2/3] fix PIDFile handling
 
 Corresponding RHBZ: https://bugzilla.redhat.com/show_bug.cgi?id=1869026
 
@@ -13,7 +13,7 @@ From original patch:
 Author: Tj <ubuntu@iam.tj>
 Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/nginx/+bug/1581864
 Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=876365
-iLast-Update: 2020-06-24
+Last-Update: 2020-06-24
 
 Signed-off-by: Felix Kaechele <felix@kaechele.ca>
 ---
@@ -22,10 +22,10 @@ Signed-off-by: Felix Kaechele <felix@kaechele.ca>
  2 files changed, 27 insertions(+), 5 deletions(-)
 
 diff --git a/src/core/nginx.c b/src/core/nginx.c
-index 48a20e9..32c0afe 100644
+index 0deb27b7f98a..23edb59ff105 100644
 --- a/src/core/nginx.c
 +++ b/src/core/nginx.c
-@@ -339,14 +339,21 @@ main(int argc, char *const *argv)
+@@ -340,14 +340,21 @@ main(int argc, char *const *argv)
          ngx_process = NGX_PROCESS_MASTER;
      }
  
@@ -48,7 +48,7 @@ index 48a20e9..32c0afe 100644
              return 1;
          }
  
-@@ -359,8 +366,19 @@ main(int argc, char *const *argv)
+@@ -360,8 +367,19 @@ main(int argc, char *const *argv)
  
  #endif
  
@@ -71,7 +71,7 @@ index 48a20e9..32c0afe 100644
  
      if (ngx_log_redirect_stderr(cycle) != NGX_OK) {
 diff --git a/src/os/unix/ngx_daemon.c b/src/os/unix/ngx_daemon.c
-index 385c49b..3719854 100644
+index 385c49b6c3d1..3719854c52b0 100644
 --- a/src/os/unix/ngx_daemon.c
 +++ b/src/os/unix/ngx_daemon.c
 @@ -7,14 +7,17 @@
@@ -104,5 +104,5 @@ index 385c49b..3719854 100644
  
      ngx_parent = ngx_pid;
 -- 
-2.31.1
+2.44.0
 

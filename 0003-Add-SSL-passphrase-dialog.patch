@@ -1,8 +1,30 @@
+From 578d0dfb790d55c834a266c593b0ec62c96df570 Mon Sep 17 00:00:00 2001
+From: Felix Kaechele <felix@kaechele.ca>
+Date: Sun, 28 Apr 2024 14:54:36 -0400
+Subject: [PATCH 3/3] Add SSL passphrase dialog
+
+Signed-off-by: Felix Kaechele <felix@kaechele.ca>
+---
+ contrib/vim/syntax/nginx.vim             |   1 +
+ src/event/ngx_event_openssl.c            | 122 +++++++++++++++++++++--
+ src/event/ngx_event_openssl.h            |  14 ++-
+ src/http/modules/ngx_http_grpc_module.c  |   2 +-
+ src/http/modules/ngx_http_proxy_module.c |   2 +-
+ src/http/modules/ngx_http_ssl_module.c   |  70 ++++++++++++-
+ src/http/modules/ngx_http_ssl_module.h   |   2 +
+ src/http/modules/ngx_http_uwsgi_module.c |   2 +-
+ src/mail/ngx_mail_ssl_module.c           |  66 +++++++++++-
+ src/mail/ngx_mail_ssl_module.h           |   2 +
+ src/stream/ngx_stream_proxy_module.c     |   2 +-
+ src/stream/ngx_stream_ssl_module.c       |  61 +++++++++++-
+ src/stream/ngx_stream_ssl_module.h       |   2 +
+ 13 files changed, 331 insertions(+), 17 deletions(-)
+
 diff --git a/contrib/vim/syntax/nginx.vim b/contrib/vim/syntax/nginx.vim
-index 7d587fc..15b21e2 100644
+index 29eef7a23cd7..e7227eb7f873 100644
 --- a/contrib/vim/syntax/nginx.vim
 +++ b/contrib/vim/syntax/nginx.vim
-@@ -617,6 +617,7 @@ syn keyword ngxDirective contained ssl_ocsp
+@@ -593,6 +593,7 @@ syn keyword ngxDirective contained ssl_ocsp
  syn keyword ngxDirective contained ssl_ocsp_cache
  syn keyword ngxDirective contained ssl_ocsp_responder
  syn keyword ngxDirective contained ssl_password_file
@@ -11,32 +33,27 @@ index 7d587fc..15b21e2 100644
  syn keyword ngxDirective contained ssl_preread
  syn keyword ngxDirective contained ssl_protocols
 diff --git a/src/event/ngx_event_openssl.c b/src/event/ngx_event_openssl.c
-index 104e8da..8cf777e 100644
+index 89f277fe56ae..a994879f64da 100644
 --- a/src/event/ngx_event_openssl.c
 +++ b/src/event/ngx_event_openssl.c
-@@ -9,9 +9,8 @@
- #include <ngx_core.h>
- #include <ngx_event.h>
+@@ -11,6 +11,7 @@
  
--
+ 
  #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
--
-+#define NGX_PASS_PHRASE_ARG_MAX_LEN  255
++#define NGX_PASS_PHRASE_ARG_MAX_LEN   255
+ 
  
  typedef struct {
-     ngx_uint_t  engine;   /* unsigned  engine:1; */
-@@ -20,8 +19,8 @@ typedef struct {
- 
+@@ -21,7 +22,7 @@ typedef struct {
  static X509 *ngx_ssl_load_certificate(ngx_pool_t *pool, char **err,
      ngx_str_t *cert, STACK_OF(X509) **chain);
--static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+ static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
 -    ngx_str_t *key, ngx_array_t *passwords);
-+static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool,
-+    char **err, ngx_str_t *key, ngx_array_t *passwords, ngx_ssl_ppdialog_conf_t *dlg);
++    ngx_str_t *key, ngx_array_t *passwords, ngx_ssl_ppdialog_conf_t *dlg);
  static int ngx_ssl_password_callback(char *buf, int size, int rwflag,
      void *userdata);
  static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
-@@ -88,6 +87,12 @@ static time_t ngx_ssl_parse_time(
+@@ -85,6 +86,12 @@ static time_t ngx_ssl_parse_time(
  #endif
      ASN1_TIME *asn1time, ngx_log_t *log);
  
@@ -49,7 +66,7 @@ index 104e8da..8cf777e 100644
  static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
  static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
  static void ngx_openssl_exit(ngx_cycle_t *cycle);
-@@ -398,7 +403,7 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
+@@ -432,7 +439,7 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
  
  ngx_int_t
  ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
@@ -58,7 +75,7 @@ index 104e8da..8cf777e 100644
  {
      ngx_str_t   *cert, *key;
      ngx_uint_t   i;
-@@ -408,7 +413,7 @@ ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
+@@ -442,7 +449,7 @@ ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
  
      for (i = 0; i < certs->nelts; i++) {
  
@@ -67,7 +84,7 @@ index 104e8da..8cf777e 100644
              != NGX_OK)
          {
              return NGX_ERROR;
-@@ -421,12 +426,13 @@ ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
+@@ -455,12 +462,13 @@ ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
  
  ngx_int_t
  ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
@@ -82,7 +99,7 @@ index 104e8da..8cf777e 100644
  
      x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
      if (x509 == NULL) {
-@@ -516,8 +522,19 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
+@@ -550,8 +558,19 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
      }
  #endif
  
@@ -104,7 +121,7 @@ index 104e8da..8cf777e 100644
          if (err != NULL) {
              ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                            "cannot load certificate key \"%s\": %s",
-@@ -587,7 +604,7 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+@@ -621,7 +640,7 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
  
  #endif
  
@@ -113,7 +130,7 @@ index 104e8da..8cf777e 100644
      if (pkey == NULL) {
          if (err != NULL) {
              ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
-@@ -700,10 +717,81 @@ ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
+@@ -734,10 +753,82 @@ ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
      return x509;
  }
  
@@ -191,18 +208,18 @@ index 104e8da..8cf777e 100644
 +}
  
  static EVP_PKEY *
--ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
 -    ngx_str_t *key, ngx_array_t *passwords)
-+ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err, ngx_str_t *key, ngx_array_t *passwords, ngx_ssl_ppdialog_conf_t *dlg)
++    ngx_str_t *key, ngx_array_t *passwords, ngx_ssl_ppdialog_conf_t *dlg)
  {
      BIO              *bio;
      EVP_PKEY         *pkey;
-@@ -791,11 +879,26 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+@@ -825,6 +916,21 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
          tries = 1;
          pwd = NULL;
          cb = NULL;
 +
-+        /** directive format: ssl_pass_phrase_dialog buildin|exec:filepath */
++        /** directive format: ssl_pass_phrase_dialog builtin|exec:filepath */
 +        if (dlg && ngx_strncasecmp(dlg->data->data, (u_char *)"exec:", 5) == 0){
 +           pwd = (void *)dlg;
 +           cb = ngx_ssl_pass_phrase_callback;
@@ -210,26 +227,20 @@ index 104e8da..8cf777e 100644
 +           pwd = NULL;
 +           cb = NULL;
 +        }
-     }
- 
--    for ( ;; ) {
-+    /* skip decrypting private keys in config test phase to avoid 
++    }
++
++    /* skip decrypting private keys in config test phase to avoid
 +       asking for pass phase twice */
 +    if (ngx_test_config){
 +        return NULL;
-+    }
+     }
  
-+    for ( ;; ) {
-         pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
-+
-         if (pkey != NULL) {
-             break;
-         }
+     for ( ;; ) {
 diff --git a/src/event/ngx_event_openssl.h b/src/event/ngx_event_openssl.h
-index 860ea26..41f4501 100644
+index ebb2c35bf287..761f48d1bb0a 100644
 --- a/src/event/ngx_event_openssl.h
 +++ b/src/event/ngx_event_openssl.h
-@@ -74,9 +74,19 @@
+@@ -82,9 +82,19 @@
  #define ERR_peek_error_data(d, f)    ERR_peek_error_line_data(NULL, NULL, d, f)
  #endif
  
@@ -249,15 +260,7 @@ index 860ea26..41f4501 100644
  
  struct ngx_ssl_s {
      SSL_CTX                    *ctx;
-@@ -84,7 +94,6 @@ struct ngx_ssl_s {
-     size_t                      buffer_size;
- };
- 
--
- struct ngx_ssl_connection_s {
-     ngx_ssl_conn_t             *connection;
-     SSL_CTX                    *session_ctx;
-@@ -184,9 +193,9 @@ ngx_int_t ngx_ssl_init(ngx_log_t *log);
+@@ -192,9 +202,9 @@ ngx_int_t ngx_ssl_init(ngx_log_t *log);
  ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
  
  ngx_int_t ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl,
@@ -270,7 +273,7 @@ index 860ea26..41f4501 100644
      ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords);
  
 diff --git a/src/http/modules/ngx_http_grpc_module.c b/src/http/modules/ngx_http_grpc_module.c
-index dfe49c5..904263d 100644
+index dfe49c58618c..904263d39ff5 100644
 --- a/src/http/modules/ngx_http_grpc_module.c
 +++ b/src/http/modules/ngx_http_grpc_module.c
 @@ -4983,7 +4983,7 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
@@ -283,7 +286,7 @@ index dfe49c5..904263d 100644
              {
                  return NGX_ERROR;
 diff --git a/src/http/modules/ngx_http_proxy_module.c b/src/http/modules/ngx_http_proxy_module.c
-index 9cc202c..2c938d7 100644
+index 9cc202c9d081..2c938d779f12 100644
 --- a/src/http/modules/ngx_http_proxy_module.c
 +++ b/src/http/modules/ngx_http_proxy_module.c
 @@ -5032,7 +5032,7 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
@@ -296,23 +299,21 @@ index 9cc202c..2c938d7 100644
              {
                  return NGX_ERROR;
 diff --git a/src/http/modules/ngx_http_ssl_module.c b/src/http/modules/ngx_http_ssl_module.c
-index 4c4a598..a147054 100644
+index 1c92d9fa8799..35132b924577 100644
 --- a/src/http/modules/ngx_http_ssl_module.c
 +++ b/src/http/modules/ngx_http_ssl_module.c
-@@ -17,8 +17,9 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
+@@ -21,6 +21,8 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
  #define NGX_DEFAULT_CIPHERS     "HIGH:!aNULL:!MD5"
  #define NGX_DEFAULT_ECDH_CURVE  "auto"
  
--#define NGX_HTTP_ALPN_PROTOS    "\x08http/1.1\x08http/1.0\x08http/0.9"
 +static ngx_str_t ngx_ssl_server_null = ngx_string(NGX_SSL_SERVER_NULL);
++
+ #define NGX_HTTP_ALPN_PROTOS    "\x08http/1.1\x08http/1.0\x08http/0.9"
  
-+#define NGX_HTTP_ALPN_PROTOS    "\x08http/1.1\x08http/1.0\x08http/0.9"
  
- #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
- static int ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
-@@ -53,6 +54,9 @@ static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
- 
- static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
+@@ -59,6 +61,9 @@ static ngx_int_t ngx_http_ssl_quic_compat_init(ngx_conf_t *cf,
+     ngx_http_conf_addr_t *addr);
+ #endif
  
 +static char *ngx_conf_set_pass_phrase_dialog(ngx_conf_t *cf, ngx_command_t *cmd,
 +    void *conf);
@@ -320,7 +321,7 @@ index 4c4a598..a147054 100644
  
  static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
      { ngx_string("SSLv2"), NGX_SSL_SSLv2 },
-@@ -296,6 +300,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
+@@ -290,6 +295,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
        offsetof(ngx_http_ssl_srv_conf_t, reject_handshake),
        NULL },
  
@@ -334,34 +335,24 @@ index 4c4a598..a147054 100644
        ngx_null_command
  };
  
-@@ -555,7 +566,7 @@ ngx_http_ssl_add_variables(ngx_conf_t *cf)
- static void *
- ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
- {
--    ngx_http_ssl_srv_conf_t  *sscf;
-+    ngx_http_ssl_srv_conf_t             *sscf;
- 
-     sscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t));
-     if (sscf == NULL) {
-@@ -577,6 +588,8 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
+@@ -609,6 +621,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
       *     sscf->ocsp_responder = { 0, NULL };
       *     sscf->stapling_file = { 0, NULL };
       *     sscf->stapling_responder = { 0, NULL };
 +     *     sscf->pass_phrase_dialog = NULL;
-+     *
       */
  
-     sscf->enable = NGX_CONF_UNSET;
-@@ -608,6 +621,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
+@@ -639,6 +652,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
  {
      ngx_http_ssl_srv_conf_t *prev = parent;
      ngx_http_ssl_srv_conf_t *conf = child;
-+    ngx_http_core_srv_conf_t            *cscf;
-+    ngx_ssl_ppdialog_conf_t             dlg;
++    ngx_http_core_srv_conf_t  *cscf;
++    ngx_ssl_ppdialog_conf_t    dlg;
  
      ngx_pool_cleanup_t  *cln;
  
-@@ -674,6 +689,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -694,6 +709,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
      ngx_conf_merge_str_value(conf->stapling_responder,
                           prev->stapling_responder, "");
  
@@ -370,12 +361,12 @@ index 4c4a598..a147054 100644
 +
      conf->ssl.log = cf->log;
  
-     if (conf->enable) {
-@@ -736,6 +754,30 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+     if (conf->certificates) {
+@@ -726,6 +744,30 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
      cln->handler = ngx_ssl_cleanup_ctx;
      cln->data = &conf->ssl;
  
-+    /** directive format: ssl_pass_phrase_dialog buildin|exec:filepath */
++    /** directive format: ssl_pass_phrase_dialog builtin|exec:filepath */
 +    if (ngx_strncasecmp(conf->pass_phrase_dialog.data, (u_char *)"exec:", 5) == 0){
 +       ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 +            "ssl_pass_phrase_dialog config directive SET: %s ", conf->pass_phrase_dialog.data);
@@ -402,7 +393,7 @@ index 4c4a598..a147054 100644
  #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
  
      if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
-@@ -786,7 +828,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -776,7 +818,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          /* configure certificates */
  
          if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
@@ -411,11 +402,10 @@ index 4c4a598..a147054 100644
              != NGX_OK)
          {
              return NGX_CONF_ERROR;
-@@ -1335,3 +1377,31 @@ ngx_http_ssl_init(ngx_conf_t *cf)
- 
+@@ -1329,6 +1371,32 @@ ngx_http_ssl_init(ngx_conf_t *cf)
      return NGX_OK;
  }
-+
+ 
 +static char *
 +ngx_conf_set_pass_phrase_dialog(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 +{
@@ -442,25 +432,27 @@ index 4c4a598..a147054 100644
 +
 +    return NGX_CONF_OK;
 +}
-+
+ 
+ #if (NGX_QUIC_OPENSSL_COMPAT)
+ 
 diff --git a/src/http/modules/ngx_http_ssl_module.h b/src/http/modules/ngx_http_ssl_module.h
-index 7ab0f7e..2f83d75 100644
+index c69c8ffd2bfd..79f1506a4c6d 100644
 --- a/src/http/modules/ngx_http_ssl_module.h
 +++ b/src/http/modules/ngx_http_ssl_module.h
-@@ -67,6 +67,8 @@ typedef struct {
- 
-     u_char                         *file;
-     ngx_uint_t                      line;
+@@ -62,6 +62,8 @@ typedef struct {
+     ngx_flag_t                      stapling_verify;
+     ngx_str_t                       stapling_file;
+     ngx_str_t                       stapling_responder;
 +
 +    ngx_str_t                       pass_phrase_dialog;
  } ngx_http_ssl_srv_conf_t;
  
  
 diff --git a/src/http/modules/ngx_http_uwsgi_module.c b/src/http/modules/ngx_http_uwsgi_module.c
-index e4f721b..61efa99 100644
+index c1731ff484c3..ab9d98a54da3 100644
 --- a/src/http/modules/ngx_http_uwsgi_module.c
 +++ b/src/http/modules/ngx_http_uwsgi_module.c
-@@ -2564,7 +2564,7 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
+@@ -2567,7 +2567,7 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
              if (ngx_ssl_certificate(cf, uwcf->upstream.ssl,
                                      &uwcf->upstream.ssl_certificate->value,
                                      &uwcf->upstream.ssl_certificate_key->value,
@@ -470,7 +462,7 @@ index e4f721b..61efa99 100644
              {
                  return NGX_ERROR;
 diff --git a/src/mail/ngx_mail_ssl_module.c b/src/mail/ngx_mail_ssl_module.c
-index 28737ac..728181d 100644
+index aebb4ccb6f88..5d95f44ad62b 100644
 --- a/src/mail/ngx_mail_ssl_module.c
 +++ b/src/mail/ngx_mail_ssl_module.c
 @@ -13,6 +13,7 @@
@@ -481,7 +473,7 @@ index 28737ac..728181d 100644
  
  #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
  static int ngx_mail_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
-@@ -35,6 +36,8 @@ static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+@@ -33,6 +34,8 @@ static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
  static char *ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post,
      void *data);
  
@@ -490,7 +482,7 @@ index 28737ac..728181d 100644
  
  static ngx_conf_enum_t  ngx_mail_starttls_state[] = {
      { ngx_string("off"), NGX_MAIL_STARTTLS_OFF },
-@@ -216,6 +219,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
+@@ -202,6 +205,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
        offsetof(ngx_mail_ssl_conf_t, conf_commands),
        &ngx_mail_ssl_conf_command_post },
  
@@ -504,7 +496,7 @@ index 28737ac..728181d 100644
        ngx_null_command
  };
  
-@@ -345,6 +355,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -330,6 +340,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
  {
      ngx_mail_ssl_conf_t *prev = parent;
      ngx_mail_ssl_conf_t *conf = child;
@@ -513,7 +505,7 @@ index 28737ac..728181d 100644
  
      char                *mode;
      ngx_pool_cleanup_t  *cln;
-@@ -388,6 +400,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -372,6 +384,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
  
      ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
  
@@ -522,11 +514,11 @@ index 28737ac..728181d 100644
  
      conf->ssl.log = cf->log;
  
-@@ -449,6 +463,29 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -430,6 +444,29 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
      cln->handler = ngx_ssl_cleanup_ctx;
      cln->data = &conf->ssl;
  
-+    /** directive format: ssl_pass_phrase_dialog buildin|exec:filepath */
++    /** directive format: ssl_pass_phrase_dialog builtin|exec:filepath */
 +    if (ngx_strncasecmp(conf->pass_phrase_dialog.data, (u_char *)"exec:", 5) == 0){
 +       ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 +            "ssl_pass_phrase_dialog config directive SET: %s ", conf->pass_phrase_dialog.data);
@@ -552,7 +544,7 @@ index 28737ac..728181d 100644
  #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
      SSL_CTX_set_alpn_select_cb(conf->ssl.ctx, ngx_mail_ssl_alpn_select, NULL);
  #endif
-@@ -461,7 +498,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -442,7 +479,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
      }
  
      if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
@@ -561,7 +553,7 @@ index 28737ac..728181d 100644
          != NGX_OK)
      {
          return NGX_CONF_ERROR;
-@@ -745,3 +782,32 @@ ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+@@ -692,3 +729,30 @@ ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
      return NGX_CONF_OK;
  #endif
  }
@@ -592,13 +584,11 @@ index 28737ac..728181d 100644
 +
 +    return NGX_CONF_OK;
 +}
-+
-+
 diff --git a/src/mail/ngx_mail_ssl_module.h b/src/mail/ngx_mail_ssl_module.h
-index a0a6113..3d87d50 100644
+index c0eb6a38f834..02b4d4f8f72b 100644
 --- a/src/mail/ngx_mail_ssl_module.h
 +++ b/src/mail/ngx_mail_ssl_module.h
-@@ -57,6 +57,8 @@ typedef struct {
+@@ -56,6 +56,8 @@ typedef struct {
  
      u_char          *file;
      ngx_uint_t       line;
@@ -608,7 +598,7 @@ index a0a6113..3d87d50 100644
  
  
 diff --git a/src/stream/ngx_stream_proxy_module.c b/src/stream/ngx_stream_proxy_module.c
-index ed275c0..1747aed 100644
+index ed275c009a8a..1747aed624b0 100644
 --- a/src/stream/ngx_stream_proxy_module.c
 +++ b/src/stream/ngx_stream_proxy_module.c
 @@ -2305,7 +2305,7 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
@@ -621,7 +611,7 @@ index ed275c0..1747aed 100644
              {
                  return NGX_ERROR;
 diff --git a/src/stream/ngx_stream_ssl_module.c b/src/stream/ngx_stream_ssl_module.c
-index 1ba1825..ba70547 100644
+index ba444776a9db..43cd7e01328d 100644
 --- a/src/stream/ngx_stream_ssl_module.c
 +++ b/src/stream/ngx_stream_ssl_module.c
 @@ -17,6 +17,8 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
@@ -643,7 +633,7 @@ index 1ba1825..ba70547 100644
  static ngx_int_t ngx_stream_ssl_init(ngx_conf_t *cf);
  
  
-@@ -226,6 +231,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
+@@ -233,6 +238,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
        0,
        NULL },
  
@@ -651,21 +641,21 @@ index 1ba1825..ba70547 100644
 +      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
 +      ngx_conf_set_pass_phrase_dialog,
 +      NGX_STREAM_SRV_CONF_OFFSET,
-+      offsetof(ngx_stream_ssl_conf_t, pass_phrase_dialog),
++      offsetof(ngx_stream_ssl_srv_conf_t, pass_phrase_dialog),
 +      NULL },
 +
        ngx_null_command
  };
  
-@@ -690,6 +702,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -802,6 +814,7 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
  {
-     ngx_stream_ssl_conf_t *prev = parent;
-     ngx_stream_ssl_conf_t *conf = child;
-+    ngx_ssl_ppdialog_conf_t             dlg;
+     ngx_stream_ssl_srv_conf_t *prev = parent;
+     ngx_stream_ssl_srv_conf_t *conf = child;
++    ngx_ssl_ppdialog_conf_t    dlg;
  
      ngx_pool_cleanup_t  *cln;
  
-@@ -732,6 +745,8 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -846,6 +859,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
  
      ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
  
@@ -674,11 +664,11 @@ index 1ba1825..ba70547 100644
  
      conf->ssl.log = cf->log;
  
-@@ -779,6 +794,23 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -879,6 +894,23 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
      cln->handler = ngx_ssl_cleanup_ctx;
      cln->data = &conf->ssl;
  
-+    /** directive format: ssl_pass_phrase_dialog buildin|exec:filepath */
++    /** directive format: ssl_pass_phrase_dialog builtin|exec:filepath */
 +    if (ngx_strncasecmp(conf->pass_phrase_dialog.data, (u_char *)"exec:", 5) == 0){
 +       ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 +            "ssl_pass_phrase_dialog config directive SET: %s ", conf->pass_phrase_dialog.data);
@@ -698,7 +688,7 @@ index 1ba1825..ba70547 100644
  #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
      SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
                                             ngx_stream_ssl_servername);
-@@ -823,7 +855,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+@@ -923,7 +955,7 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          /* configure certificates */
  
          if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
@@ -707,7 +697,7 @@ index 1ba1825..ba70547 100644
              != NGX_OK)
          {
              return NGX_CONF_ERROR;
-@@ -1209,3 +1241,31 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
+@@ -1371,3 +1403,30 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
  
      return NGX_OK;
  }
@@ -715,7 +705,7 @@ index 1ba1825..ba70547 100644
 +static char *
 +ngx_conf_set_pass_phrase_dialog(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 +{
-+    ngx_stream_ssl_conf_t     *sscf = conf;
++    ngx_stream_ssl_srv_conf_t *sscf = conf;
 +    ngx_str_t                 *value;
 +
 +    if (sscf->pass_phrase_dialog.data){
@@ -738,17 +728,19 @@ index 1ba1825..ba70547 100644
 +
 +    return NGX_CONF_OK;
 +}
-+
 diff --git a/src/stream/ngx_stream_ssl_module.h b/src/stream/ngx_stream_ssl_module.h
-index e7c825e..d80daa4 100644
+index 6f6d9aec3e9b..870640dbfc12 100644
 --- a/src/stream/ngx_stream_ssl_module.h
 +++ b/src/stream/ngx_stream_ssl_module.h
-@@ -56,6 +56,8 @@ typedef struct {
+@@ -53,6 +53,8 @@ typedef struct {
  
-     u_char          *file;
-     ngx_uint_t       line;
+     ngx_flag_t       session_tickets;
+     ngx_array_t     *session_ticket_keys;
 +
 +    ngx_str_t        pass_phrase_dialog;
- } ngx_stream_ssl_conf_t;
+ } ngx_stream_ssl_srv_conf_t;
  
  
+-- 
+2.44.0
+
