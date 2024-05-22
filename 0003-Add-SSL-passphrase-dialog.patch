@@ -1,12 +1,11 @@
-From 578d0dfb790d55c834a266c593b0ec62c96df570 Mon Sep 17 00:00:00 2001
-From: Felix Kaechele <felix@kaechele.ca>
-Date: Sun, 28 Apr 2024 14:54:36 -0400
+From 679397c62265a5ee93953d0913dc834b163a5aec Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Lubo=C5=A1=20Uhliarik?= <luhliari@redhat.com>
+Date: Wed, 22 May 2024 22:23:08 +0200
 Subject: [PATCH 3/3] Add SSL passphrase dialog
 
-Signed-off-by: Felix Kaechele <felix@kaechele.ca>
 ---
  contrib/vim/syntax/nginx.vim             |   1 +
- src/event/ngx_event_openssl.c            | 122 +++++++++++++++++++++--
+ src/event/ngx_event_openssl.c            | 126 +++++++++++++++++++++--
  src/event/ngx_event_openssl.h            |  14 ++-
  src/http/modules/ngx_http_grpc_module.c  |   2 +-
  src/http/modules/ngx_http_proxy_module.c |   2 +-
@@ -16,12 +15,12 @@ Signed-off-by: Felix Kaechele <felix@kaechele.ca>
  src/mail/ngx_mail_ssl_module.c           |  66 +++++++++++-
  src/mail/ngx_mail_ssl_module.h           |   2 +
  src/stream/ngx_stream_proxy_module.c     |   2 +-
- src/stream/ngx_stream_ssl_module.c       |  61 +++++++++++-
+ src/stream/ngx_stream_ssl_module.c       |  61 ++++++++++-
  src/stream/ngx_stream_ssl_module.h       |   2 +
- 13 files changed, 331 insertions(+), 17 deletions(-)
+ 13 files changed, 335 insertions(+), 17 deletions(-)
 
 diff --git a/contrib/vim/syntax/nginx.vim b/contrib/vim/syntax/nginx.vim
-index 29eef7a23cd7..e7227eb7f873 100644
+index 29eef7a..e7227eb 100644
 --- a/contrib/vim/syntax/nginx.vim
 +++ b/contrib/vim/syntax/nginx.vim
 @@ -593,6 +593,7 @@ syn keyword ngxDirective contained ssl_ocsp
@@ -33,7 +32,7 @@ index 29eef7a23cd7..e7227eb7f873 100644
  syn keyword ngxDirective contained ssl_preread
  syn keyword ngxDirective contained ssl_protocols
 diff --git a/src/event/ngx_event_openssl.c b/src/event/ngx_event_openssl.c
-index 89f277fe56ae..a994879f64da 100644
+index 89f277f..6f7f2a2 100644
 --- a/src/event/ngx_event_openssl.c
 +++ b/src/event/ngx_event_openssl.c
 @@ -11,6 +11,7 @@
@@ -99,29 +98,33 @@ index 89f277fe56ae..a994879f64da 100644
  
      x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
      if (x509 == NULL) {
-@@ -550,8 +558,19 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
+@@ -550,8 +558,23 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
      }
  #endif
  
 -    pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords);
 -    if (pkey == NULL) {
 +    pubkey = X509_get_pubkey(x509);
-+    if (!pubkey){
++    if (!pubkey) {
 +        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
 +                          "X509_get_pubkey() failed");
 +        return NGX_ERROR;
 +    }
-+    dlg->cryptosystem = EVP_PKEY_get_base_id(pubkey);
++
++    if (dlg) {
++         dlg->cryptosystem = EVP_PKEY_get_base_id(pubkey);
++    }
++
 +    EVP_PKEY_free(pubkey);
 +
 +    pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords, dlg);
-+    if (ngx_test_config){
++    if (ngx_test_config) {
 +        return NGX_OK;
 +    } else if (pkey == NULL) {
          if (err != NULL) {
              ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                            "cannot load certificate key \"%s\": %s",
-@@ -621,7 +640,7 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+@@ -621,7 +644,7 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
  
  #endif
  
@@ -130,7 +133,7 @@ index 89f277fe56ae..a994879f64da 100644
      if (pkey == NULL) {
          if (err != NULL) {
              ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
-@@ -734,10 +753,82 @@ ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
+@@ -734,10 +757,82 @@ ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
      return x509;
  }
  
@@ -214,7 +217,7 @@ index 89f277fe56ae..a994879f64da 100644
  {
      BIO              *bio;
      EVP_PKEY         *pkey;
-@@ -825,6 +916,21 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+@@ -825,6 +920,21 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
          tries = 1;
          pwd = NULL;
          cb = NULL;
@@ -237,7 +240,7 @@ index 89f277fe56ae..a994879f64da 100644
  
      for ( ;; ) {
 diff --git a/src/event/ngx_event_openssl.h b/src/event/ngx_event_openssl.h
-index ebb2c35bf287..761f48d1bb0a 100644
+index ebb2c35..761f48d 100644
 --- a/src/event/ngx_event_openssl.h
 +++ b/src/event/ngx_event_openssl.h
 @@ -82,9 +82,19 @@
@@ -273,7 +276,7 @@ index ebb2c35bf287..761f48d1bb0a 100644
      ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords);
  
 diff --git a/src/http/modules/ngx_http_grpc_module.c b/src/http/modules/ngx_http_grpc_module.c
-index dfe49c58618c..904263d39ff5 100644
+index dfe49c5..904263d 100644
 --- a/src/http/modules/ngx_http_grpc_module.c
 +++ b/src/http/modules/ngx_http_grpc_module.c
 @@ -4983,7 +4983,7 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
@@ -286,7 +289,7 @@ index dfe49c58618c..904263d39ff5 100644
              {
                  return NGX_ERROR;
 diff --git a/src/http/modules/ngx_http_proxy_module.c b/src/http/modules/ngx_http_proxy_module.c
-index 9cc202c9d081..2c938d779f12 100644
+index 9cc202c..2c938d7 100644
 --- a/src/http/modules/ngx_http_proxy_module.c
 +++ b/src/http/modules/ngx_http_proxy_module.c
 @@ -5032,7 +5032,7 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
@@ -299,7 +302,7 @@ index 9cc202c9d081..2c938d779f12 100644
              {
                  return NGX_ERROR;
 diff --git a/src/http/modules/ngx_http_ssl_module.c b/src/http/modules/ngx_http_ssl_module.c
-index 1c92d9fa8799..35132b924577 100644
+index 1c92d9f..35132b9 100644
 --- a/src/http/modules/ngx_http_ssl_module.c
 +++ b/src/http/modules/ngx_http_ssl_module.c
 @@ -21,6 +21,8 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
@@ -436,7 +439,7 @@ index 1c92d9fa8799..35132b924577 100644
  #if (NGX_QUIC_OPENSSL_COMPAT)
  
 diff --git a/src/http/modules/ngx_http_ssl_module.h b/src/http/modules/ngx_http_ssl_module.h
-index c69c8ffd2bfd..79f1506a4c6d 100644
+index c69c8ff..79f1506 100644
 --- a/src/http/modules/ngx_http_ssl_module.h
 +++ b/src/http/modules/ngx_http_ssl_module.h
 @@ -62,6 +62,8 @@ typedef struct {
@@ -449,7 +452,7 @@ index c69c8ffd2bfd..79f1506a4c6d 100644
  
  
 diff --git a/src/http/modules/ngx_http_uwsgi_module.c b/src/http/modules/ngx_http_uwsgi_module.c
-index c1731ff484c3..ab9d98a54da3 100644
+index c1731ff..ab9d98a 100644
 --- a/src/http/modules/ngx_http_uwsgi_module.c
 +++ b/src/http/modules/ngx_http_uwsgi_module.c
 @@ -2567,7 +2567,7 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
@@ -462,7 +465,7 @@ index c1731ff484c3..ab9d98a54da3 100644
              {
                  return NGX_ERROR;
 diff --git a/src/mail/ngx_mail_ssl_module.c b/src/mail/ngx_mail_ssl_module.c
-index aebb4ccb6f88..5d95f44ad62b 100644
+index aebb4cc..5d95f44 100644
 --- a/src/mail/ngx_mail_ssl_module.c
 +++ b/src/mail/ngx_mail_ssl_module.c
 @@ -13,6 +13,7 @@
@@ -585,7 +588,7 @@ index aebb4ccb6f88..5d95f44ad62b 100644
 +    return NGX_CONF_OK;
 +}
 diff --git a/src/mail/ngx_mail_ssl_module.h b/src/mail/ngx_mail_ssl_module.h
-index c0eb6a38f834..02b4d4f8f72b 100644
+index c0eb6a3..02b4d4f 100644
 --- a/src/mail/ngx_mail_ssl_module.h
 +++ b/src/mail/ngx_mail_ssl_module.h
 @@ -56,6 +56,8 @@ typedef struct {
@@ -598,7 +601,7 @@ index c0eb6a38f834..02b4d4f8f72b 100644
  
  
 diff --git a/src/stream/ngx_stream_proxy_module.c b/src/stream/ngx_stream_proxy_module.c
-index ed275c009a8a..1747aed624b0 100644
+index ed275c0..1747aed 100644
 --- a/src/stream/ngx_stream_proxy_module.c
 +++ b/src/stream/ngx_stream_proxy_module.c
 @@ -2305,7 +2305,7 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
@@ -611,7 +614,7 @@ index ed275c009a8a..1747aed624b0 100644
              {
                  return NGX_ERROR;
 diff --git a/src/stream/ngx_stream_ssl_module.c b/src/stream/ngx_stream_ssl_module.c
-index ba444776a9db..43cd7e01328d 100644
+index ba44477..43cd7e0 100644
 --- a/src/stream/ngx_stream_ssl_module.c
 +++ b/src/stream/ngx_stream_ssl_module.c
 @@ -17,6 +17,8 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
@@ -729,7 +732,7 @@ index ba444776a9db..43cd7e01328d 100644
 +    return NGX_CONF_OK;
 +}
 diff --git a/src/stream/ngx_stream_ssl_module.h b/src/stream/ngx_stream_ssl_module.h
-index 6f6d9aec3e9b..870640dbfc12 100644
+index 6f6d9ae..870640d 100644
 --- a/src/stream/ngx_stream_ssl_module.h
 +++ b/src/stream/ngx_stream_ssl_module.h
 @@ -53,6 +53,8 @@ typedef struct {
