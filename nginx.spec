@@ -54,7 +54,7 @@
 
 
 Name:              nginx
-Epoch:             1
+Epoch:             2
 Version:           1.26.1
 Release:           %autorelease
 
