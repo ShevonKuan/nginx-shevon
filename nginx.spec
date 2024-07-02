@@ -22,6 +22,12 @@
 
 %global with_aio 1
 
+%if 0%{?fedora} > 40 || 0%{?rhel} > 9
+%bcond_with engine
+%else
+%bcond_without engine
+%endif
+
 %if 0%{?fedora} > 22
 %global with_mailcap_mimetypes 1
 %endif
@@ -93,6 +99,9 @@ Patch1:            0002-fix-PIDFile-handling.patch
 # downstream patch - Add ssl-pass-phrase-dialog helper script for
 # encrypted private keys with pass phrase decryption
 Patch2:            0003-Add-SSL-passphrase-dialog.patch
+
+# downstream patch - Disable ENGINE support by default for F41+
+Patch3:            0004-Disable-ENGINE-support.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -334,6 +343,9 @@ if ! ./configure \
     --with-mail_ssl_module \
 %if 0%{?with_ktls}
     --with-openssl-opt=enable-ktls \
+%endif
+%if %{without engine}
+    --without-engine \
 %endif
     --with-pcre \
     --with-pcre-jit \
