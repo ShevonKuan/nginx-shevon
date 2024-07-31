@@ -290,7 +290,7 @@ mv ../%{name}-%{version}-%{release}-src .
 # variable.
 export DESTDIR=%{buildroot}
 # So the perl module finds its symbols:
-nginx_ldopts="$RPM_LD_FLAGS -Wl,-E"
+nginx_ldopts="$RPM_LD_FLAGS -Wl,-E -O2"
 if ! ./configure \
     --prefix=%{_datadir}/nginx \
     --sbin-path=%{_sbindir}/nginx \
