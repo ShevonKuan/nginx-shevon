@@ -103,6 +103,9 @@ Patch2:            0003-Add-SSL-passphrase-dialog.patch
 # downstream patch - Disable ENGINE support by default for F41+
 Patch3:            0004-Disable-ENGINE-support.patch
 
+# downstream patch - Compile perl module with O2
+Patch4:            0005-Compile-perl-module-with-O2.patch
+
 BuildRequires:     make
 BuildRequires:     gcc
 BuildRequires:     gnupg2
