@@ -302,8 +302,7 @@ unzip -q %{SOURCE7} -d .
 dnf install -y git
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
 # Add my name
-sed -i "s/NGINX_VERSION.*/NGINX_VERSION      \"%{version}-shevon\"/" ./src/core/nginx.h
-sed -i "s/NGINX_VER\ .*/NGINX_VER          \"nginx\/%{version}-shevon\"/" ./src/core/nginx.h
+sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/http/ngx_http_header_filter_module.c
 sed -i "s/Server: nginx/Server: nginx\/%{version}-shevon/g" ./src/http/ngx_http_header_filter_module.c
 
 %build
