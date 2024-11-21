@@ -62,7 +62,7 @@
 Name:              nginx
 Epoch:             2
 Version:           1.27.2
-Release:           %autorelease.shevon
+Release:           %autorelease.shevon.2
 
 Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
 License:           BSD-2-Clause
@@ -300,10 +300,6 @@ mv ../%{name}-%{version}-%{release}-src .
 # brotli
 unzip -q %{SOURCE7} -d .
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
-# Add my name
-sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/core/nginx.h
-sed -i "s/Server: nginx/Server: nginx\/%{version}-shevon/g" ./src/http/ngx_http_header_filter_module.c
-
 %build
 # nginx does not utilize a standard configure script.  It has its own
 # and the standard configure options cause the nginx configure script
@@ -382,6 +378,10 @@ if ! ./configure \
   cat objs/autoconf.err
   exit 1
 fi
+# Add my name
+sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/core/nginx.h
+sed -i "s/Server: nginx/Server: nginx\/%{version}-shevon/g" ./src/http/ngx_http_header_filter_module.c
+
 
 %make_build
 
