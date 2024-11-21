@@ -62,7 +62,7 @@
 Name:              nginx
 Epoch:             2
 Version:           1.27.2
-Release:           %autorelease.shevon.2
+Release:           %autorelease.shevon
 
 Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
 License:           BSD-2-Clause
@@ -265,7 +265,7 @@ Requires:          zlib-devel
 %{summary}.
 
 %package mod-brotli
-Summary:           Nginx stream modules
+Summary:           Nginx brotli-algorithm modules by google
 BuildRequires:          unzip
 BuildRequires:          git
 Requires:          nginx = %{epoch}:%{version}-%{release}
@@ -361,9 +361,9 @@ if ! ./configure \
 %if 0%{?with_ktls}
     --with-openssl-opt=enable-ktls \
 %endif
-%if %{without engine}
-    --without-engine \
-%endif
+# %if %{without engine}
+#     --without-engine \
+# %endif
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
