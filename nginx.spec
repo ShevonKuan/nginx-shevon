@@ -361,9 +361,6 @@ if ! ./configure \
 %if 0%{?with_ktls}
     --with-openssl-opt=enable-ktls \
 %endif
-# %if %{without engine}
-#     --without-engine \
-# %endif
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
