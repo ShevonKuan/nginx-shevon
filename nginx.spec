@@ -301,7 +301,7 @@ mv ../%{name}-%{version}-%{release}-src .
 unzip -q %{SOURCE7} -d .
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
 # Add my name
-sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/http/ngx_http_header_filter_module.c
+sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/core/nginx.h
 sed -i "s/Server: nginx/Server: nginx\/%{version}-shevon/g" ./src/http/ngx_http_header_filter_module.c
 
 %build
