@@ -266,8 +266,8 @@ Requires:          zlib-devel
 
 %package mod-brotli
 Summary:           Nginx stream modules
-Requires:          unzip
-Requires:          git
+BuildRequires:          unzip
+BuildRequires:          git
 Requires:          nginx = %{epoch}:%{version}-%{release}
 Requires:          nginx(abi) = %{nginx_abiversion}
 
@@ -299,7 +299,6 @@ cp -a ../%{name}-%{version} ../%{name}-%{version}-%{release}-src
 mv ../%{name}-%{version}-%{release}-src .
 # brotli
 unzip -q %{SOURCE7} -d .
-dnf install -y git
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
 # Add my name
 sed -i "s/\"nginx\/\"/\"nginx-pro-shevon\/\"/g" ./src/http/ngx_http_header_filter_module.c
