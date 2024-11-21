@@ -61,10 +61,10 @@
 
 Name:              nginx
 Epoch:             2
-Version:           1.26.2
+Version:           1.27.2
 Release:           %autorelease
 
-Summary:           A high performance web server and reverse proxy server
+Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
 License:           BSD-2-Clause
 URL:               https://nginx.org
 
@@ -76,6 +76,8 @@ Source3:           https://nginx.org/keys/arut.key
 Source4:           https://nginx.org/keys/pluknet.key
 Source5:           https://nginx.org/keys/sb.key
 Source6:           https://nginx.org/keys/thresh.key
+# Add Brotli support
+Source7:           https://github.com/google/ngx_brotli/archive/refs/heads/master.zip
 Source10:          nginx.service
 Source11:          nginx.logrotate
 Source12:          nginx.conf
@@ -88,23 +90,23 @@ Source102:         nginx-logo.png
 Source200:         README.dynamic
 Source210:         UPGRADE-NOTES-1.6-to-1.10
 
-# removes -Werror in upstream build scripts.  -Werror conflicts with
-# -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
-Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
+# # removes -Werror in upstream build scripts.  -Werror conflicts with
+# # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
+# Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
-# downstream patch - fix PIDFile race condition (rhbz#1869026)
-# rejected upstream: https://trac.nginx.org/nginx/ticket/1897
-Patch1:            0002-fix-PIDFile-handling.patch
+# # downstream patch - fix PIDFile race condition (rhbz#1869026)
+# # rejected upstream: https://trac.nginx.org/nginx/ticket/1897
+# Patch1:            0002-fix-PIDFile-handling.patch
 
-# downstream patch - Add ssl-pass-phrase-dialog helper script for
-# encrypted private keys with pass phrase decryption
-Patch2:            0003-Add-SSL-passphrase-dialog.patch
+# # downstream patch - Add ssl-pass-phrase-dialog helper script for
+# # encrypted private keys with pass phrase decryption
+# Patch2:            0003-Add-SSL-passphrase-dialog.patch
 
-# downstream patch - Disable ENGINE support by default for F41+
-Patch3:            0004-Disable-ENGINE-support.patch
+# # downstream patch - Disable ENGINE support by default for F41+
+# Patch3:            0004-Disable-ENGINE-support.patch
 
-# downstream patch - Compile perl module with O2
-Patch4:            0005-Compile-perl-module-with-O2.patch
+# # downstream patch - Compile perl module with O2
+# Patch4:            0005-Compile-perl-module-with-O2.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -170,6 +172,7 @@ Requires:          nginx-mod-http-perl = %{epoch}:%{version}-%{release}
 Requires:          nginx-mod-http-xslt-filter = %{epoch}:%{version}-%{release}
 Requires:          nginx-mod-mail = %{epoch}:%{version}-%{release}
 Requires:          nginx-mod-stream = %{epoch}:%{version}-%{release}
+Requires:          nginx-mod-brotli = %{epoch}:%{version}-%{release}
 
 %description all-modules
 Meta package that installs all available nginx modules.
@@ -261,6 +264,16 @@ Requires:          zlib-devel
 %description mod-devel
 %{summary}.
 
+%package mod-brotli
+Summary:           Nginx stream modules
+Requires:          unzip
+Requires:          git
+Requires:          nginx = %{epoch}:%{version}-%{release}
+Requires:          nginx(abi) = %{nginx_abiversion}
+
+
+%description mod-brotli
+NGINX module for Brotli compression. Brotli is a generic-purpose lossless compression algorithm that compresses data using a combination of a modern variant of the LZ77 algorithm, Huffman coding and 2nd order context modeling, with a compression ratio comparable to the best currently available general-purpose compression methods. It is similar in speed with deflate but offers more dense compression.
 
 %prep
 # Combine all keys from upstream into one file
@@ -284,7 +297,13 @@ sed \
 # Prepare sources for installation
 cp -a ../%{name}-%{version} ../%{name}-%{version}-%{release}-src
 mv ../%{name}-%{version}-%{release}-src .
-
+# brotli
+unzip -q %{SOURCE7} -d .
+git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
+# Add my name
+sed -i "s/NGINX_VERSION.*/NGINX_VERSION      \"%{version}-shevon\"/" ./src/core/nginx.h
+sed -i "s/NGINX_VER\ .*/NGINX_VER          \"nginx\/%{version}-shevon\"/" ./src/core/nginx.h
+sed -i "s/Server: nginx/Server: nginx\/%{version}-shevon/g" ./src/http/ngx_http_header_filter_module.c
 
 %build
 # nginx does not utilize a standard configure script.  It has its own
@@ -358,6 +377,7 @@ if ! ./configure \
     --with-stream_ssl_preread_module \
     --with-threads \
     --with-cc-opt="%{optflags} $(pcre2-config --cflags)" \
+    --add-dynamic-module=ngx_brotli-master \
     --with-ld-opt="$nginx_ldopts"; then
   : configure failed
   cat objs/autoconf.err
@@ -452,6 +472,12 @@ echo 'load_module "%{nginx_moduledir}/ngx_mail_module.so";' \
     > %{buildroot}%{nginx_moduleconfdir}/mod-mail.conf
 echo 'load_module "%{nginx_moduledir}/ngx_stream_module.so";' \
     > %{buildroot}%{nginx_moduleconfdir}/mod-stream.conf
+# Add brotli
+echo 'load_module "%{nginx_moduledir}/ngx_http_brotli_filter_module.so";' \
+    > %{buildroot}%{nginx_moduleconfdir}/mod-brotli.conf
+echo 'load_module "%{nginx_moduledir}/ngx_http_brotli_static_module.so";' \
+    >> %{buildroot}%{nginx_moduleconfdir}/mod-brotli.conf
+
 
 # Install files for supporting nginx module builds
 ## Install source files
@@ -515,6 +541,11 @@ if [ $1 -eq 1 ]; then
     /usr/bin/systemctl reload nginx.service >/dev/null 2>&1 || :
 fi
 
+%post mod-brotli
+if [ $1 -eq 1 ]; then
+    /usr/bin/systemctl reload nginx.service >/dev/null 2>&1 || :
+fi
+
 %preun
 %systemd_preun nginx.service
 
@@ -542,7 +573,7 @@ fi
 
 %files core
 %license LICENSE
-%doc CHANGES README README.dynamic
+%doc CHANGES README.md README.dynamic
 %{_sbindir}/nginx
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf.default
@@ -615,6 +646,10 @@ fi
 %{_fileattrsdir}/nginxmods.attr
 %{nginx_srcdir}/
 
+%files mod-brotli
+%{nginx_moduleconfdir}/mod-brotli.conf
+%{nginx_moduledir}/ngx_http_brotli_filter_module.so
+%{nginx_moduledir}/ngx_http_brotli_static_module.so
 
 %changelog
 %autochangelog
