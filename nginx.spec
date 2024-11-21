@@ -299,6 +299,7 @@ cp -a ../%{name}-%{version} ../%{name}-%{version}-%{release}-src
 mv ../%{name}-%{version}-%{release}-src .
 # brotli
 unzip -q %{SOURCE7} -d .
+dnf install -y git
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
 # Add my name
 sed -i "s/NGINX_VERSION.*/NGINX_VERSION      \"%{version}-shevon\"/" ./src/core/nginx.h
