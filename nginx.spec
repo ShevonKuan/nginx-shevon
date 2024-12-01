@@ -61,7 +61,7 @@
 
 Name:              nginx
 Epoch:             2
-Version:           1.27.2
+Version:           1.27.3
 Release:           %autorelease.shevon
 
 Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
