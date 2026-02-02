@@ -93,26 +93,26 @@ Source102:         nginx-logo.png
 Source200:         README.dynamic
 Source220:         instance.conf
 
-# removes -Werror in upstream build scripts.  -Werror conflicts with
-# -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
-Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
+# # removes -Werror in upstream build scripts.  -Werror conflicts with
+# # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
+# Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
-# downstream patch - fix PIDFile race condition (rhbz#1869026)
-# rejected upstream: https://trac.nginx.org/nginx/ticket/1897
-Patch1:            0002-fix-PIDFile-handling.patch
+# # downstream patch - fix PIDFile race condition (rhbz#1869026)
+# # rejected upstream: https://trac.nginx.org/nginx/ticket/1897
+# Patch1:            0002-fix-PIDFile-handling.patch
 
-# downstream patch - Add ssl-pass-phrase-dialog helper script for
-# encrypted private keys with pass phrase decryption
-Patch2:            0003-Add-SSL-passphrase-dialog.patch
+# # downstream patch - Add ssl-pass-phrase-dialog helper script for
+# # encrypted private keys with pass phrase decryption
+# Patch2:            0003-Add-SSL-passphrase-dialog.patch
 
-# downstream patch - Disable ENGINE support by default for F41+
-Patch3:            0004-Disable-ENGINE-support.patch
+# # downstream patch - Disable ENGINE support by default for F41+
+# Patch3:            0004-Disable-ENGINE-support.patch
 
-# downstream patch - Compile perl module with O2
-Patch4:            0005-Compile-perl-module-with-O2.patch
+# # downstream patch - Compile perl module with O2
+# Patch4:            0005-Compile-perl-module-with-O2.patch
 
-# upstream patch - https://github.com/nginx/nginx/pull/1089
-Patch5:            0006-Clarify-binding-behavior-of-t-option.patch
+# # upstream patch - https://github.com/nginx/nginx/pull/1089
+# Patch5:            0006-Clarify-binding-behavior-of-t-option.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
