@@ -62,7 +62,7 @@
 Name:              nginx
 Epoch:             2
 Version:           1.29.4
-Release:           %autorelease
+Release:           %autorelease.shevon
 
 Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
 License:           BSD-2-Clause
@@ -86,27 +86,33 @@ Source14:          nginx-upgrade.8
 Source15:          macros.nginxmods.in
 Source16:          nginxmods.attr
 Source17:          nginx-ssl-pass-dialog
+Source18:          nginx@.service
+Source19:          nginx.sysusers
+Source20:          nginx.tmpfiles
 Source102:         nginx-logo.png
 Source200:         README.dynamic
-Source210:         UPGRADE-NOTES-1.6-to-1.10
+Source220:         instance.conf
 
-# # removes -Werror in upstream build scripts.  -Werror conflicts with
-# # -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
-# Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
+# removes -Werror in upstream build scripts.  -Werror conflicts with
+# -D_FORTIFY_SOURCE=2 causing warnings to turn into errors.
+Patch0:            0001-remove-Werror-in-upstream-build-scripts.patch
 
-# # downstream patch - fix PIDFile race condition (rhbz#1869026)
-# # rejected upstream: https://trac.nginx.org/nginx/ticket/1897
-# Patch1:            0002-fix-PIDFile-handling.patch
+# downstream patch - fix PIDFile race condition (rhbz#1869026)
+# rejected upstream: https://trac.nginx.org/nginx/ticket/1897
+Patch1:            0002-fix-PIDFile-handling.patch
 
-# # downstream patch - Add ssl-pass-phrase-dialog helper script for
-# # encrypted private keys with pass phrase decryption
-# Patch2:            0003-Add-SSL-passphrase-dialog.patch
+# downstream patch - Add ssl-pass-phrase-dialog helper script for
+# encrypted private keys with pass phrase decryption
+Patch2:            0003-Add-SSL-passphrase-dialog.patch
 
-# # downstream patch - Disable ENGINE support by default for F41+
-# Patch3:            0004-Disable-ENGINE-support.patch
+# downstream patch - Disable ENGINE support by default for F41+
+Patch3:            0004-Disable-ENGINE-support.patch
 
-# # downstream patch - Compile perl module with O2
-# Patch4:            0005-Compile-perl-module-with-O2.patch
+# downstream patch - Compile perl module with O2
+Patch4:            0005-Compile-perl-module-with-O2.patch
+
+# upstream patch - https://github.com/nginx/nginx/pull/1089
+Patch5:            0006-Clarify-binding-behavior-of-t-option.patch
 
 BuildRequires:     make
 BuildRequires:     gcc
@@ -117,32 +123,25 @@ BuildRequires:     gperftools-devel
 BuildRequires:     libxcrypt-devel
 BuildRequires:     openssl%{?openssl_pkgversion}-devel
 BuildRequires:     pcre2-devel
+%if 0%{?fedora} || 0%{?rhel} > 8
+BuildRequires:     zlib-ng-devel
+%else
 BuildRequires:     zlib-devel
+%endif
 
 Requires:          nginx-filesystem = %{epoch}:%{version}-%{release}
-%if 0%{?el7}
-# centos-logos el7 does not provide 'system-indexhtml'
-Requires:          system-logos redhat-indexhtml
-# need to remove epel7 geoip sub-package, doesn't work anymore
-# https://bugzilla.redhat.com/show_bug.cgi?id=1576034
-# https://bugzilla.redhat.com/show_bug.cgi?id=1664957
-Obsoletes:         nginx-mod-http-geoip <= 1:1.16
-%else
 Requires:          system-logos-httpd
-%endif
 
 Provides:          webserver
-%if 0%{?fedora} || 0%{?rhel} >= 8
 Recommends:        logrotate
-%endif
 Requires:          %{name}-core = %{epoch}:%{version}-%{release}
 
 BuildRequires:     systemd
-Requires(post):    systemd
-Requires(preun):   systemd
-Requires(postun):  systemd
+BuildRequires:     systemd-rpm-macros
+%{?systemd_requires}
 # For external nginx modules
 Provides:          nginx(abi) = %{nginx_abiversion}
+
 
 %description
 Nginx is a web server and a reverse proxy server for HTTP, SMTP, POP3 and
@@ -181,7 +180,8 @@ Meta package that installs all available nginx modules.
 %package filesystem
 Summary:           The basic directory layout for the Nginx server
 BuildArch:         noarch
-Requires(pre):     shadow-utils
+# RHEL 9 compat, remove after RHEL 9 EOL
+%{?sysusers_requires_compat}
 
 %description filesystem
 The nginx-filesystem package contains the basic directory layout
@@ -211,9 +211,7 @@ Requires:          gd
 %package mod-http-perl
 Summary:           Nginx HTTP perl module
 BuildRequires:     perl-devel
-%if 0%{?fedora} >= 24 || 0%{?rhel} >= 7
 BuildRequires:     perl-generators
-%endif
 BuildRequires:     perl(ExtUtils::Embed)
 Requires:          nginx(abi) = %{nginx_abiversion}
 Requires:          perl(constant)
@@ -281,12 +279,7 @@ NGINX module for Brotli compression. Brotli is a generic-purpose lossless compre
 cat %{S:2} %{S:3} %{S:4} %{S:5} %{S:6} > %{_builddir}/%{name}.gpg
 %{gpgverify} --keyring='%{_builddir}/%{name}.gpg' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 %autosetup -p1
-cp %{SOURCE200} %{SOURCE210} %{SOURCE10} %{SOURCE12} .
-
-%if 0%{?rhel} > 0 && 0%{?rhel} < 8
-sed -i -e 's#KillMode=.*#KillMode=process#g' nginx.service
-sed -i -e 's#PROFILE=SYSTEM#HIGH:!aNULL:!MD5#' nginx.conf
-%endif
+cp %{SOURCE200} %{SOURCE10} %{SOURCE12} %{SOURCE18} %{SOURCE220} .
 
 %if 0%{?openssl_pkgversion}
 sed \
@@ -295,12 +288,20 @@ sed \
   -i auto/lib/openssl/conf
 %endif
 
+# Prepare template config for instances
+sed -e '/^error_log /s|error\.log|@INSTANCE@_error.log|' \
+    -e '/^pid /s|nginx\.pid|nginx-@INSTANCE@.pid|' \
+    -e '/^ *access_log/s|access\.log|@INSTANCE@_access.log|' \
+    nginx.conf >> instance.conf
+touch -r %{SOURCE12} instance.conf
+
 # Prepare sources for installation
 cp -a ../%{name}-%{version} ../%{name}-%{version}-%{release}-src
 mv ../%{name}-%{version}-%{release}-src .
 # brotli
 unzip -q %{SOURCE7} -d .
 git clone --depth 1 https://github.com/google/brotli.git ngx_brotli-master/deps/brotli
+
 %build
 # nginx does not utilize a standard configure script.  It has its own
 # and the standard configure options cause the nginx configure script
@@ -362,6 +363,9 @@ if ! ./configure \
 %if 0%{?with_ktls}
     --with-openssl-opt=enable-ktls \
 %endif
+%if %{without engine}
+    --without-engine \
+%endif
     --with-pcre \
     --with-pcre-jit \
     --with-stream=dynamic \
@@ -394,6 +398,8 @@ find %{buildroot} -type f -iname '*.so' -exec chmod 0755 '{}' \;
 
 install -p -D -m 0644 ./nginx.service \
     %{buildroot}%{_unitdir}/nginx.service
+install -p -D -m 0644 ./nginx@.service \
+    %{buildroot}%{_unitdir}/nginx@.service
 install -p -D -m 0644 %{SOURCE11} \
     %{buildroot}%{_sysconfdir}/logrotate.d/nginx
 
@@ -496,12 +502,17 @@ install -m755 $RPM_SOURCE_DIR/nginx-ssl-pass-dialog \
         $RPM_BUILD_ROOT%{_libexecdir}/nginx-ssl-pass-dialog
 
 
+# install sysusers file
+install -p -D -m 0644 %{SOURCE19} %{buildroot}%{_sysusersdir}/nginx.conf
+
+# tmpfiles.d configuration
+mkdir -p %{buildroot}%{_tmpfilesdir}
+install -m 644 -p %{SOURCE20} %{buildroot}%{_tmpfilesdir}/nginx.conf
+
 %pre filesystem
-getent group %{nginx_user} > /dev/null || groupadd -r %{nginx_user}
-getent passwd %{nginx_user} > /dev/null || \
-    useradd -r -d %{_localstatedir}/lib/nginx -g %{nginx_user} \
-    -s /sbin/nologin -c "Nginx web server" %{nginx_user}
-exit 0
+# RHEL 9 compat, remove after RHEL 9 EOL
+%sysusers_create_compat %{SOURCE19}
+
 
 %post
 %systemd_post nginx.service
@@ -553,9 +564,6 @@ if [ $1 -ge 1 ]; then
 fi
 
 %files
-%if 0%{?rhel} == 7
-%doc UPGRADE-NOTES-1.6-to-1.10
-%endif
 %{_datadir}/nginx/html/*
 %{_bindir}/nginx-upgrade
 %{_datadir}/vim/vimfiles/ftdetect/nginx.vim
@@ -566,11 +574,12 @@ fi
 %{_mandir}/man8/nginx.8*
 %{_mandir}/man8/nginx-upgrade.8*
 %{_unitdir}/nginx.service
+%{_unitdir}/nginx@.service
 %{_libexecdir}/nginx-ssl-pass-dialog
 
 %files core
 %license LICENSE
-%doc CHANGES README.md README.dynamic
+%doc CHANGES README.md README.dynamic instance.conf
 %{_sbindir}/nginx
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf
 %config(noreplace) %{_sysconfdir}/nginx/fastcgi.conf.default
@@ -593,6 +602,7 @@ fi
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx
 %attr(770,%{nginx_user},root) %dir %{_localstatedir}/lib/nginx/tmp
 %attr(711,root,root) %dir %{_localstatedir}/log/nginx
+%{_tmpfilesdir}/nginx.conf
 %ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/access.log
 %ghost %attr(640,%{nginx_user},root) %{_localstatedir}/log/nginx/error.log
 %dir %{nginx_moduledir}
@@ -608,6 +618,7 @@ fi
 %dir %{_sysconfdir}/nginx/default.d
 %dir %{_sysconfdir}/systemd/system/nginx.service.d
 %dir %{_unitdir}/nginx.service.d
+%{_sysusersdir}/nginx.conf
 
 %if %{with geoip}
 %files mod-http-geoip
