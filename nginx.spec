@@ -61,7 +61,7 @@
 
 Name:              nginx
 Epoch:             2
-Version:           1.29.1
+Version:           1.29.4
 Release:           %autorelease.shevon
 
 Summary:           A high performance web server and reverse proxy server (Modified by ShevonKuan)
@@ -114,6 +114,7 @@ BuildRequires:     gnupg2
 %if 0%{?with_gperftools}
 BuildRequires:     gperftools-devel
 %endif
+BuildRequires:     libxcrypt-devel
 BuildRequires:     openssl%{?openssl_pkgversion}-devel
 BuildRequires:     pcre2-devel
 BuildRequires:     zlib-devel
